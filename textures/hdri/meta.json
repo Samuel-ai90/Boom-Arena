@@ -1,0 +1,32 @@
+{
+  "sunset": {
+    "src": "qwantani_sunset_puresky",
+    "license": "CC0 1.0",
+    "file": "sunset.jpg",
+    "w": 2048,
+    "h": 1024,
+    "yaw": 0.6216,
+    "pitch": 0.109,
+    "kb": 65
+  },
+  "day": {
+    "src": "kloofendal_48d_partly_cloudy_puresky",
+    "license": "CC0 1.0",
+    "file": "day.jpg",
+    "w": 2048,
+    "h": 1024,
+    "yaw": 0.6369,
+    "pitch": 0.9075,
+    "kb": 121
+  },
+  "overcast": {
+    "src": "kloofendal_overcast_puresky",
+    "license": "CC0 1.0",
+    "file": "overcast.jpg",
+    "w": 2048,
+    "h": 1024,
+    "yaw": 0.64,
+    "pitch": 0.3946,
+    "kb": 65
+  }
+}

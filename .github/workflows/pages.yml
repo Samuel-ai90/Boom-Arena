@@ -1,0 +1,48 @@
+name: Publish web version
+
+# Every push to main publishes the game to GitHub Pages, so it can be played straight from the browser.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the static site
+        run: |
+          mkdir -p _site
+          cp -R index.html *.js manifest.webmanifest maps.json fonts icons lobby operators props textures vendor _site/
+          rm -f _site/server.js _site/game.js
+          # config.js is normally written by server.js: the list of optional asset files, and no online server
+          node -e '
+            const fs = require("fs"), list = [];
+            for (const d of ["props", "operators"]) for (const f of fs.readdirSync(d)) if (/^[A-Za-z0-9_-]+\.(glb|json)$/.test(f)) list.push(d + "/" + f);
+            for (const f of fs.readdirSync("textures/2k")) if (/\.webp$/.test(f)) list.push("textures/2k/" + f);
+            for (const f of fs.readdirSync("textures/hdri")) if (/\.(jpg|json)$/.test(f)) list.push("textures/hdri/" + f);
+            fs.writeFileSync("_site/config.js", "window.BOOM_ONLINE = \"\";\nwindow.BOOM_HAS = " + JSON.stringify(list) + ";\nwindow.BOOM_LAN = [];\n");
+          '
+          # build stamp (shown on the menu, and makes browsers pick up a new version)
+          stamp="$(node -p 'require("./package.json").version')-${GITHUB_SHA::7}"
+          sed -i "s/__BUILD__/$stamp/g" _site/index.html _site/sw.js
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,85 @@
+{
+  "name": "boom-arena",
+  "version": "1.0.0",
+  "description": "Boom Arena: a browser shooter with online matches run by a Node server",
+  "private": true,
+  "main": "desktop/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/run.js",
+    "check": "node --check server.js && node --check game.js && node --check shared.js",
+    "desktop": "electron .",
+    "dist:win": "node desktop/set-online.js && electron-builder --win nsis --x64 --publish never",
+    "import-operator": "node tools/import-operator.js",
+    "dist:mac": "node desktop/set-online.js && electron-builder --mac dmg --arm64 --publish never"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.boomarena.game",
+    "productName": "Boom Arena",
+    "copyright": "Boom Arena",
+    "directories": {
+      "output": "dist",
+      "buildResources": "desktop/build"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/**/*.{md,ts,map}",
+      "!tools/**",
+      "!characters/**",
+      "!tests/**",
+      "!screenshots/**",
+      "!_ex_*",
+      "!*.tar.gz",
+      "!dist-win/**",
+      "!render.yaml",
+      "!start-server.command",
+      "!start-server.bat",
+      "!DEPLOY.md",
+      "!package-lock.json",
+      "!dist/**",
+      "!.github/**",
+      "!start-server.bat"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "icons/icon-512.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "artifactName": "BoomArena-Setup-${version}.exe"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.games",
+      "icon": "icons/icon-512.png",
+      "identity": null,
+      "artifactName": "BoomArena-${version}-mac-arm64.${ext}"
+    },
+    "dmg": {
+      "title": "Boom Arena"
+    }
+  }
+}

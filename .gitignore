@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-win/
+*.tar.gz
+.DS_Store
+.claude/
+_site/
