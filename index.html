@@ -3186,6 +3186,10 @@ document.addEventListener('visibilitychange', () => setBgMuted(document.hidden |
 addEventListener('blur', () => setBgMuted(true));
 addEventListener('focus', () => setBgMuted(document.hidden));
 const noiseCache = {};
+// Synthesized sounds that are switched off while the game moves to recorded audio. What stays on: footsteps,
+// jumps / landings / vaults / slides, gun handling (mags, bolts, pumps, casings), the parachute and lobby music.
+// Gunshots keep their synth only until recorded shots load (see gunSound). Set any of these to true to bring it back.
+const SYNTH_SFX = { explosions: false, impacts: false, jet: false, chimes: false, earRing: false };
 function audio() {
   if (AC) return AC;
   AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -3195,13 +3199,19 @@ function audio() {
   // a lowpass that's wide open until a blast goes off next to you
   deaf = AC.createBiquadFilter(); deaf.type = 'lowpass'; deaf.frequency.value = 20000;
   master.connect(deaf); deaf.connect(comp); comp.connect(AC.destination); compNode = comp;
-  const conv = AC.createConvolver(), len = Math.floor(AC.sampleRate*1.6), ir = AC.createBuffer(2, len, AC.sampleRate);
-  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 3.2); }
-  conv.buffer = ir; verb = AC.createGain(); verb.gain.value = .2; verb.connect(conv); conv.connect(master);
-  // outdoor slap-back echo off the surroundings
+  // Short open-air reverb: a smooth exponential decay, low-passed as it fades (air soaks up the highs), so it adds
+  // space without the hissy wash a long raw-noise tail gives every sound
+  const conv = AC.createConvolver(), len = Math.floor(AC.sampleRate*.9), ir = AC.createBuffer(2, len, AC.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch); let lpS = 0;
+    for (let i = 0; i < len; i++) { const k = i/len, a = .25 + .7*k; lpS += (Math.random()*2 - 1 - lpS) * (1 - a); d[i] = lpS * Math.exp(-k*6.5) * (i < AC.sampleRate*.012 ? i/(AC.sampleRate*.012) : 1); }
+  }
+  conv.buffer = ir; verb = AC.createGain(); verb.gain.value = .11; verb.connect(conv); conv.connect(master);
+  // one slap-back off the surroundings (a gentle second, no ringing repeats), muffled like a distant wall
   const d1 = AC.createDelay(1), fb = AC.createGain(), lp = AC.createBiquadFilter();
-  d1.delayTime.value = .27; fb.gain.value = .32; lp.type = 'lowpass'; lp.frequency.value = 1300;
-  echoIn = AC.createGain(); echoIn.connect(d1); d1.connect(lp); lp.connect(fb); fb.connect(d1); lp.connect(master);
+  d1.delayTime.value = .19; fb.gain.value = .1; lp.type = 'lowpass'; lp.frequency.value = 900;
+  echoIn = AC.createGain(); echoIn.gain.value = .55; echoIn.connect(d1); d1.connect(lp); lp.connect(fb); fb.connect(d1); lp.connect(master);
+  loadShotRecordings();
   return AC;
 }
 function noise(dur) {
@@ -3236,6 +3246,24 @@ function src(dur, type, freq, gain, dest, at, q) {
   s.connect(f); f.connect(g); g.connect(dest); s.start(at);
 }
 let shotVoices = [];
+// Recorded gunshots (Snake's Authentic Gun Sounds packs by SnakeF8, public domain): one dry shot per caliber,
+// pitched per gun. [file in sounds/guns, playback rate, level]. Until a recording has loaded, the synth plays.
+const SHOT_REC = {
+  ar:      ['ar', 1, 1],          // 5.56: M16A4
+  lmg:     ['ar', .93, 1.05],     // 5.56 from a heavier gun: M249
+  smg:     ['nine', 1.05, .9],    // 9 mm: MP5
+  pistol:  ['nine', .97, .95],    // 9 mm: M9, G18
+  dmr:     ['dmr', 1, 1.05],      // .308: Mk 14
+  sniper:  ['sniper', 1, 1.1],    // 7.62x54R: M24
+  shotgun: ['shotgun', 1, 1.1],   // 20 gauge: M870
+  magnum:  ['heavy', .8, 1.1],    // 7.62x39 pitched down for the .44: Model 629
+};
+const SHOT_BUF = {};
+function loadShotRecordings() {
+  if (!/^https?:$/.test(location.protocol)) return;   // file:// pages can't fetch them; the synth plays instead
+  for (const f of new Set(Object.values(SHOT_REC).map(r => r[0])))
+    fetch(`sounds/guns/${f}.m4a`).then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => AC.decodeAudioData(b)).then(buf => { SHOT_BUF[f] = buf; }).catch(() => {});
+}
 // `walled`: there's a wall between you and the shooter, so you hear it muffled (and can tell it's not in the open)
 function gunSound(id, vol = 1, pan = 0, dist = 0, supp = false, walled = false) {
   if (bgMuted || !AC || vol < .01 || dist > 85) return;
@@ -3251,6 +3279,13 @@ function gunSound(id, vol = 1, pan = 0, dist = 0, supp = false, walled = false) 
   if (AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); out.connect(p); node = p; }
   lpf.connect(out); node.connect(master); node.connect(verb);
   if (echoIn) { const e = AC.createGain(); e.gain.value = S.echo * (.6 + Math.min(1, dist*.03)) * (supp ? .15 : 1); node.connect(e); e.connect(echoIn); }
+  const rec = SHOT_REC[id] || SHOT_REC.ar, buf = SHOT_BUF[rec[0]];
+  if (buf) {   // the recording, a touch different every shot so full-auto doesn't sound like a loop
+    const s = AC.createBufferSource(), g = AC.createGain();
+    s.buffer = buf; s.playbackRate.value = rec[1]*rand(.97, 1.03); g.gain.value = rec[2]*rand(.92, 1);
+    s.connect(g); g.connect(lpf); s.start(t);
+    return;
+  }
   src(S.crack[1], 'highpass', S.crack[0]*rand(.9, 1.1), S.crack[2]*far*(supp ? .12 : 1), lpf, t);
   src(S.body[1], 'bandpass', S.body[0]*rand(.92, 1.08), S.body[2]*1.6, lpf, t, .7);
   const o = AC.createOscillator(), og = AC.createGain();
@@ -3295,7 +3330,7 @@ function mech(type, delay = 0, vol = .55) {
 }
 // hit confirm: a dry tick with a little body under it; the head adds a bright metallic tink
 function hitSound(head) {
-  if (!S.hitSounds || bgMuted || !AC) return;
+  if (!S.hitSounds || bgMuted || !AC || !SYNTH_SFX.chimes) return;
   const t = AC.currentTime, out = outNode(head ? .55 : .42, 0, false);
   src(.028, 'bandpass', head ? 4300 : 2700, 1, out, t, 2.5); src(.05, 'lowpass', 380, .9, out, t, 1);
   tone(head ? 1700 : 1150, .045, .06, 'square');
@@ -3303,14 +3338,14 @@ function hitSound(head) {
 }
 // kill confirm: a low thump and a rising two-note chime (three on a headshot)
 function killSound(head) {
-  if (!S.hitSounds || bgMuted || !AC) return;
+  if (!S.hitSounds || bgMuted || !AC || !SYNTH_SFX.chimes) return;
   const t = AC.currentTime, out = outNode(.6, 0, false);
   src(.1, 'lowpass', 170, 1, out, t, 1); src(.035, 'bandpass', 3000, .7, out, t, 2);
   tone(880, .12, .12, 'triangle'); setTimeout(() => tone(1320, .16, .1, 'triangle'), 70);
   if (head) setTimeout(() => tone(1760, .2, .08, 'triangle'), 140);
 }
 function tone(freq, dur, vol, type = 'sine', pan = 0) {
-  if (bgMuted || !AC) return;
+  if (bgMuted || !AC || !SYNTH_SFX.chimes) return;
   const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
   o.type = type; o.frequency.value = freq;
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
@@ -3328,7 +3363,7 @@ function panFor(p) {
 }
 // Grenade blast: a sharp crack, the mid-range blast, a deep pressure thump, a long rolling tail and falling debris
 function boom(pos, big = 1) {
-  if (bgMuted || !AC) return;
+  if (bgMuted || !AC || !SYNTH_SFX.explosions) return;
   const dist = pos.distanceTo(camera.position)/big, far = 1/(1 + dist*.05), t = AC.currentTime + Math.min(.25, dist*big/343);
   const lpf = AC.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 450 + 10000*far;
   const out = AC.createGain(); out.gain.value = clamp(2.4/(1 + dist*.06), 0, 1.5);
@@ -3347,7 +3382,7 @@ function boom(pos, big = 1) {
 }
 // A blast right next to you muffles everything and leaves your ears ringing for a moment
 function deafen(k) {
-  if (!deaf) return;
+  if (!deaf || !SYNTH_SFX.earRing) return;
   const t = AC.currentTime, f = deaf.frequency;
   f.cancelScheduledValues(t); f.setValueAtTime(Math.max(300, 2600*(1 - k)), t); f.exponentialRampToValueAtTime(20000, t + 1.2 + k*2.2);
   const o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = 3700;
@@ -3476,7 +3511,7 @@ const IMPACT_SFX = { metal: [['bandpass', 3200, .5, .05, 8], ['sine', 1900, .12,
   dirt: [['lowpass', 700, .5, .06]], flesh: [['lowpass', 500, .55, .05], ['sine', 120, .3, .05]] };
 let impactSndT = 0;
 function impactSound(point, surface) {
-  if (bgMuted || !AC || now - impactSndT < .03) return;
+  if (bgMuted || !AC || !SYNTH_SFX.impacts || now - impactSndT < .03) return;
   const dist = point.distanceTo(camera.position); if (dist > 40) return;
   impactSndT = now;
   const vol = Math.min(1, 3/(1 + dist*.35)), t = AC.currentTime, dest = outNode(vol*.5, 0, false);
@@ -6754,7 +6789,7 @@ const airMark = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.5, 32), new THREE.M
 airMark.geometry.rotateX(-Math.PI/2); airMark.visible = false; scene.add(airMark);
 let flatNoiseBuf = null;
 function jetSound(passIn, pan0, pan1) {
-  if (bgMuted || !AC) return;
+  if (bgMuted || !AC || !SYNTH_SFX.jet) return;
   if (!flatNoiseBuf) { const n = AC.sampleRate*2; flatNoiseBuf = AC.createBuffer(1, n, AC.sampleRate); const d = flatNoiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random()*2 - 1; }
   const t = AC.currentTime, s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
   s.buffer = flatNoiseBuf; s.loop = true; f.type = 'lowpass';

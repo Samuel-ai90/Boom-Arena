@@ -42,3 +42,7 @@ The game tests your computer the first time it loads and picks the best look tha
 ## Hosting online matches
 
 Run `node server.js` (Node.js 22 or newer). Players on the same network join at the address it prints. See `render.yaml` to host it on Render.
+
+## Credits
+
+- Gunshot recordings: [Snake's Authentic Gun Sounds](https://f8studios.itch.io/snakes-authentic-gun-sounds) and [Snake's SECOND Authentic Gun Sounds](https://f8studios.itch.io/snakes-second-authentic-gun-sounds-pack) by SnakeF8 (public domain).
