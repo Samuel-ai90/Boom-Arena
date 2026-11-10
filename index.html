@@ -4006,6 +4006,49 @@ const LASER_AT = { mpistol: [0, -.022, -.105], pistol: [0, -.022, -.105], magnum
 const MUZZLE_R = { mpistol: .014, pistol: .013, magnum: .014, smg: .017, ar: .019, lmg: .021, shotgun: .02, sniper: .021, dmr: .02 };
 const RAIL = { mpistol: [.048, -.03], pistol: [.042, -.03], magnum: [.042, -.03], shotgun: [.046, 0] };   // [top of the slide/receiver, z] for a reflex sight
 const SIGHT_Z = { ar: -.09, smg: -.04, lmg: .04, dmr: -.04 };
+// Realistic gun models (artist-made, licensed CC-BY: see weapons/*-LICENSE.txt and the README credits), chosen per gun
+// in the Gunsmith; "classic" is the original procedural build. Each entry fits the model to the same hand, sight and
+// muzzle points the procedural gun uses, so attachments, aiming and the reload animation work unchanged.
+// dy: vertical shift so the stock red dot sits on the receiver; grip / fore: hands; magTop / magZ: magazine pivot.
+const REAL_GUN = {
+  smg: {
+    rotuma: { name: 'Realistic', file: 'weapons/mp5-rotuma.glb', credit: 'MP5 Submachine Gun by Rotuma',
+      dy: -.065, grip: [0, -.105, .055], fore: [0, -.06, -.2], muzzle: [0, -.018, -.33], magTop: .066, magZ: -.085 },
+  },
+};
+const REAL_GUN_SCENE = {};
+let gunModelSel = (() => { try { return JSON.parse(store.get('boomGunModel', '{}')) || {}; } catch (e) { return {}; } })();
+// which realistic variant a gun uses (null: the classic build, or the model hasn't loaded)
+function realGunDef(model) {
+  const all = REAL_GUN[model]; if (!all) return null;
+  const v = gunModelSel[model] || Object.keys(all)[0];
+  return v !== 'classic' && all[v] && REAL_GUN_SCENE[all[v].file] ? all[v] : null;
+}
+function loadRealGuns() {
+  const jobs = [];
+  for (const m in REAL_GUN) for (const v in REAL_GUN[m]) {
+    const f = REAL_GUN[m][v].file; if (REAL_GUN_SCENE[f]) continue;
+    jobs.push(new Promise(res => new THREE.GLTFLoader().load(f, gl => { REAL_GUN_SCENE[f] = gl.scene; res(); }, undefined, () => res())));
+  }
+  return Promise.all(jobs);
+}
+// swap the procedural body for the realistic model; returns false (keep the classic build) if it isn't available
+function realGun(g, u, model) {
+  const d = realGunDef(model); if (!d) return false;
+  const body = new THREE.Group(); body.rotation.y = Math.PI; body.position.y = d.dy; g.add(body);
+  body.add(REAL_GUN_SCENE[d.file].clone(true));
+  g.updateMatrixWorld(true);
+  // the magazine goes on its own pivot (top of the mag) so reloads drop it out and an extended mag stretches down
+  const mag = new THREE.Group(); g.add(mag); const mi = new THREE.Group(); mi.position.set(0, d.magTop + d.dy, d.magZ); mag.add(mi);
+  const magMesh = []; body.traverse(o => { if (o.isMesh && /^Mag/i.test(o.name)) magMesh.push(o); });
+  mag.updateMatrixWorld(true); for (const o of magMesh) mi.attach(o);
+  u.mag = mag; u.magInner = mi;
+  u.sight = redDot(g, .072, -.04);
+  u.muzzle = V(...d.muzzle); u.sightY = .072;
+  u.hip = V(.12, -.11, -.34); u.ads = V(0, -.072, -.3); u.adsFov = 58; u.eject = 1; u.flashSize = .22;
+  u.real = { grip: V(...d.grip), fore: V(...d.fore) };
+  return true;
+}
 function addAttachments(g, u, model, att, fore) {
   if (att.optic === 'acog' && u.sight) {
     u.sight.visible = false;
@@ -4145,7 +4188,8 @@ function buildGun(model, withArms, skinId, att) {
     u.mag = null;     u.muzzle = V(0, .021, -.26); u.sightY = .052; grip = V(0, -.065, .06); fore = V(-.028, -.075, .055);
     u.hip = V(.12, -.10, -.32); u.ads = V(0, -.052, -.38); u.adsFov = 60; u.eject = -1; u.flashSize = .32;
   }
-  if (model === 'smg') {
+  if (model === 'smg' && realGun(g, u, model)) { grip = u.real.grip; fore = u.real.fore; }
+  else if (model === 'smg') {
     gB(g, .045, .06, .3, GM.gun, 0, 0, -.05);
     gB(g, .046, .02, .12, GM.poly, 0, -.018, -.17);
     gB(g, .022, .01, .26, GM.poly, 0, .035, -.05);
@@ -4301,7 +4345,7 @@ function buildGun(model, withArms, skinId, att) {
     u.hip = V(.11, -.10, -.34); u.ads = V(0, -.078, -.2); u.adsFov = 20; u.eject = 3; u.flashSize = .4; u.scope = true;
   }
   u.grip = grip; u.fore = fore; u.model = model;
-  gunDetail(g, u, model);
+  if (!u.real) gunDetail(g, u, model);   // the realistic models already have their own detail
   if (att) addAttachments(g, u, model, att, fore);
   const sk = skinMats(skinId);
   if (sk) g.traverse(o => { if (o.isMesh) { if (o.material === GM.gun) o.material = sk.gun; else if (o.material === GM.poly) o.material = sk.poly; } });
@@ -7931,12 +7975,24 @@ function renderLoadout() {
     };
   });
   const cur2 = getAtt(w), slots = ATT_SLOTS[w.model] || {};
-  $('atts').innerHTML = Object.entries(slots).map(([slot, ids]) => `<div class="arow"><span>${SLOT_NAME[slot]}</span><div class="achips">${ids.map(id => {
+  // realistic model or the classic build, for guns that have one
+  const gmv = REAL_GUN[w.model], gmCur = gmv && (gunModelSel[w.model] || Object.keys(gmv)[0]);
+  const gmRow = gmv ? `<div class="arow"><span>Model</span><div class="achips">${[...Object.entries(gmv).map(([id, v]) => [id, v.name, v.credit]), ['classic', 'Classic', 'The original Boom Arena build']].map(([id, nm, tip]) =>
+    `<button data-gm="${id}" class="${gmCur === id ? 'on' : ''}" title="${tip}">${nm}</button>`).join('')}</div></div>` : '';
+  $('atts').innerHTML = gmRow + Object.entries(slots).map(([slot, ids]) => `<div class="arow"><span>${SLOT_NAME[slot]}</span><div class="achips">${ids.map(id => {
     const inf = ATT_INFO[id], lock = (inf.unlock || 0) > k;
     return `<button data-slot="${slot}" data-a="${id}" class="${cur2[slot] === id ? 'on' : ''} ${lock ? 'locked' : ''}" title="${inf.note || ''}${lock ? ` · unlocks at ${inf.unlock} kills with the ${w.name}` : ''}">${lock ? '🔒 ' : ''}${attName(id, w)}${lock ? `<small>${k}/${inf.unlock}</small>` : ''}</button>`;
   }).join('')}</div></div>`).join('');
   $('anote').textContent = Object.values(cur2).filter(id => ATT_INFO[id].note).map(id => `${ATT_INFO[id].name}: ${ATT_INFO[id].note}`).join('  ·  ');
-  [...$('atts').querySelectorAll('button')].forEach(b => {
+  [...$('atts').querySelectorAll('button[data-gm]')].forEach(b => {
+    b.onmouseenter = () => { $('anote').textContent = b.title; };
+    b.onclick = () => {
+      gunModelSel[w.model] = b.dataset.gm; store.set('boomGunModel', JSON.stringify(gunModelSel));
+      WEAPONS.forEach((x, i) => { if (x.model === w.model) rebuildViewmodel(i); });
+      renderLoadout(); updatePreview();
+    };
+  });
+  [...$('atts').querySelectorAll('button[data-a]')].forEach(b => {
     b.onmouseenter = () => { const inf = ATT_INFO[b.dataset.a]; $('anote').textContent = inf.note ? `${inf.name}: ${inf.note}${(inf.unlock || 0) > k ? ` · unlocks at ${inf.unlock} kills (${k}/${inf.unlock})` : ''}` : inf.name; };
     b.onclick = () => {
       const inf = ATT_INFO[b.dataset.a];
@@ -9357,7 +9413,8 @@ function frame(t, uncapped) {
 
 bootMark('script end');
 // refresh-rate detection waits on the screen, so it runs while the soldier model loads
-Promise.all([detectRefresh().then(hz => { targetFps = Math.round(hz); bootMark('refresh detect'); }), loadSoldier()]).then(async () => {
+Promise.all([detectRefresh().then(hz => { targetFps = Math.round(hz); bootMark('refresh detect'); }), loadSoldier(),
+  Promise.race([loadRealGuns(), new Promise(r => setTimeout(r, 8000))]).then(() => { WEAPONS.forEach((w, i) => { if (realGunDef(w.model)) rebuildViewmodel(i); }); bootMark('gun models'); })]).then(async () => {
   bootMark('soldier model');
   registerVanguard();
   await Promise.race([loadOperators(), new Promise(r => setTimeout(r, 6000))]); bootMark('operators');

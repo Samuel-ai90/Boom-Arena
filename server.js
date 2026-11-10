@@ -35,7 +35,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 // operator models (soldier bodies) live in operators/: a list (operators.json) and one .glb per operator
 // lobby/ holds the lobby backdrop and staged operator art, fonts/ the bundled UI font (both work offline)
 const publicFile = url => PUBLIC[url] || (/^\/(operators|props)\/[A-Za-z0-9_-]+\.(glb|json)$/.test(url) || /^\/textures\/(1k\/[a-z0-9_]+\.webp|2k\/[a-z0-9_]+\.(webp|jpg)|hdri\/[a-z0-9_]+\.(jpg|json))$/.test(url)
-  || /^\/lobby\/[a-z0-9_-]+\.(jpg|webp)$/.test(url) || /^\/fonts\/[a-z0-9_-]+\.woff2$/.test(url) || /^\/sounds\/guns\/[a-z0-9_-]+\.m4a$/.test(url) ? url.slice(1) : null);
+  || /^\/lobby\/[a-z0-9_-]+\.(jpg|webp)$/.test(url) || /^\/fonts\/[a-z0-9_-]+\.woff2$/.test(url) || /^\/sounds\/guns\/[a-z0-9_-]+\.m4a$/.test(url) || /^\/weapons\/[a-z0-9_-]+\.glb$/.test(url) ? url.slice(1) : null);
 const fileCache = new Map();
 function optionalFiles() {
   const out = [];

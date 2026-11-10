@@ -27,7 +27,7 @@ jobs:
       - name: Build the static site
         run: |
           mkdir -p _site
-          cp -R index.html *.js manifest.webmanifest maps.json fonts icons lobby operators props sounds textures vendor _site/
+          cp -R index.html *.js manifest.webmanifest maps.json fonts icons lobby operators props sounds textures vendor weapons _site/
           rm -f _site/server.js _site/game.js
           # config.js is normally written by server.js: the list of optional asset files, and no online server
           node -e '

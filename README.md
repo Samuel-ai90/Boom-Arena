@@ -46,3 +46,4 @@ Run `node server.js` (Node.js 22 or newer). Players on the same network join at 
 ## Credits
 
 - Gunshot recordings: [Snake's Authentic Gun Sounds](https://f8studios.itch.io/snakes-authentic-gun-sounds) and [Snake's SECOND Authentic Gun Sounds](https://f8studios.itch.io/snakes-second-authentic-gun-sounds-pack) by SnakeF8 (public domain).
+- MP5 model: ["MP5 Submachine Gun"](https://sketchfab.com/3d-models/mp5-submachine-gun-a73b61932a0e4eecb5db5c63c158aa24) by [Rotuma](https://sketchfab.com/Rotuma), licensed under [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/) (textures resized for the game).
