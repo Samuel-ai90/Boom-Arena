@@ -1,0 +1,11 @@
+Model Information:
+* title:	Remington 870 Police Magnum 12 Gauge Shotgun
+* source:	https://sketchfab.com/3d-models/remington-870-police-magnum-12-gauge-shotgun-eea11de7e9d24b6683962b8388c319eb
+* author:	8sianDude (https://sketchfab.com/haoliu95)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Remington 870 Police Magnum 12 Gauge Shotgun" (https://sketchfab.com/3d-models/remington-870-police-magnum-12-gauge-shotgun-eea11de7e9d24b6683962b8388c319eb) by 8sianDude (https://sketchfab.com/haoliu95) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

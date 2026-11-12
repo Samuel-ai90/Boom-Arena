@@ -47,3 +47,7 @@ Run `node server.js` (Node.js 22 or newer). Players on the same network join at 
 
 - Gunshot recordings: [Snake's Authentic Gun Sounds](https://f8studios.itch.io/snakes-authentic-gun-sounds) and [Snake's SECOND Authentic Gun Sounds](https://f8studios.itch.io/snakes-second-authentic-gun-sounds-pack) by SnakeF8 (public domain).
 - MP5 model: ["MP5 Submachine Gun"](https://sketchfab.com/3d-models/mp5-submachine-gun-a73b61932a0e4eecb5db5c63c158aa24) by [Rotuma](https://sketchfab.com/Rotuma), licensed under [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/) (textures resized for the game).
+- M16A4 model: ["M16 Assault Rifle"](https://sketchfab.com/3d-models/m16-assault-rifle-339d0f7b21024387853dd926a5d51b50) by Mateusz Woliński ([jeandiz](https://sketchfab.com/jeandiz)), CC-BY-4.0 (carry handle hidden, textures resized).
+- M9 model: ["Beretta M9"](https://sketchfab.com/3d-models/beretta-m9-d1200d9aa28f466484f7d3fdd7724e76) by [emran.bayati](https://sketchfab.com/emran.bayati), CC-BY-4.0 (spare magazine hidden, textures resized).
+- M870 model: ["Remington 870 Police Magnum 12 Gauge Shotgun"](https://sketchfab.com/3d-models/remington-870-police-magnum-12-gauge-shotgun-eea11de7e9d24b6683962b8388c319eb) by 8sianDude ([haoliu95](https://sketchfab.com/haoliu95)), CC-BY-4.0 (loose shells removed, textures resized).
+- M249 model: ["M249"](https://sketchfab.com/3d-models/m249-9b4c19512e6749248704ff5a5b6d4421) by [Chipotle0303](https://sketchfab.com/Chipotle0303), CC-BY-4.0 (textures resized).

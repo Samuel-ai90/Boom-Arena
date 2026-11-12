@@ -4007,14 +4007,32 @@ const MUZZLE_R = { mpistol: .014, pistol: .013, magnum: .014, smg: .017, ar: .01
 const RAIL = { mpistol: [.048, -.03], pistol: [.042, -.03], magnum: [.042, -.03], shotgun: [.046, 0] };   // [top of the slide/receiver, z] for a reflex sight
 const SIGHT_Z = { ar: -.09, smg: -.04, lmg: .04, dmr: -.04 };
 // Realistic gun models (artist-made, licensed CC-BY: see weapons/*-LICENSE.txt and the README credits), chosen per gun
-// in the Gunsmith; "classic" is the original procedural build. Each entry fits the model to the same hand, sight and
-// muzzle points the procedural gun uses, so attachments, aiming and the reload animation work unchanged.
-// dy: vertical shift so the stock red dot sits on the receiver; grip / fore: hands; magTop / magZ: magazine pivot.
+// in the Gunsmith; "classic" is the original procedural build. Each model is turned so the barrel points -z (rotY),
+// scaled to the real gun's length (len), centred and put with its butt at z = 0, then moved by `off` so its hands,
+// sight line and muzzle land where the game expects them. hide: parts to hide; cut: boxes of loose pieces to remove
+// (in that butt-at-zero frame); mag: the magazine part, which gets its own pivot so reloads drop it out.
+// sight: 'holo' / 'reddot' adds the stock optic at (sightY, sightZ); 'none' aims with the model's own iron sights.
 const REAL_GUN = {
-  smg: {
-    rotuma: { name: 'Realistic', file: 'weapons/mp5-rotuma.glb', credit: 'MP5 Submachine Gun by Rotuma',
-      dy: -.065, grip: [0, -.105, .055], fore: [0, -.06, -.2], muzzle: [0, -.018, -.33], magTop: .066, magZ: -.085 },
-  },
+  smg: { rotuma: { name: 'Realistic', file: 'weapons/mp5-rotuma.glb', credit: 'MP5 Submachine Gun by Rotuma',
+    rotY: Math.PI, len: .652, off: [.0065, -.065, .326], mag: /^Mag/i, magPivot: [0, .001, -.085],
+    grip: [0, -.105, .055], fore: [0, -.06, -.2], muzzle: [0, -.018, -.33], sight: 'reddot', sightY: .072, sightZ: -.04,
+    hip: [.12, -.11, -.34], ads: [0, -.072, -.3], adsFov: 58, eject: 1, flashSize: .22 } },
+  ar: { wolinski: { name: 'Realistic', file: 'weapons/m16-wolinski.glb', credit: 'M16 Assault Rifle by Mateusz Woliński',
+    rotY: 0, len: 1.0, off: [.01, .006, .44], hide: /REAR_SIGHT/i, mag: /MAGAZINE/i, magPivot: [0, -.064, -.059],
+    grip: [0, -.094, .085], fore: [0, -.049, -.28], muzzle: [0, -.004, -.56], sight: 'holo', sightY: .068, sightZ: -.06,
+    hip: [.11, -.09, -.32], ads: [0, -.068, -.27], adsFov: 55, eject: 1, flashSize: .27, laser: [.032, 0, -.25], muzzleR: .012 } },
+  pistol: { bayati: { name: 'Realistic', file: 'weapons/m9-bayati.glb', credit: 'Beretta M9 by emran.bayati',
+    rotY: -Math.PI/2, len: .217, off: [0, -.091, .065], hide: /Gun001/i, mag: /^Magazine/i, magPivot: [0, .015, .018],
+    grip: [0, -.051, .035], fore: [-.026, -.062, .03], muzzle: [0, .033, -.152], sight: 'none', sightY: .05,
+    hip: [.12, -.10, -.32], ads: [0, -.05, -.36], adsFov: 62, eject: 0, flashSize: .22, rail: [.051, -.03], laser: [0, -.005, -.115], muzzleR: .013 } },
+  shotgun: { r870: { name: 'Realistic', file: 'weapons/m870-8siandude.glb', credit: 'Remington 870 Police Magnum by 8sianDude',
+    rotY: 0, len: .96, off: [0, -.042, .40],
+    grip: [0, -.092, .12], fore: [0, -.045, -.17], muzzle: [0, .003, -.557], sight: 'none', sightY: .038,
+    hip: [.12, -.10, -.34], ads: [0, -.038, -.36], adsFov: 66, eject: 2, flashSize: .34, rail: [.036, -.02], laser: [0, -.02, -.3], muzzleR: .012 } },
+  lmg: { chipotle: { name: 'Realistic', file: 'weapons/m249-chipotle.glb', credit: 'M249 by Chipotle0303',
+    rotY: Math.PI, len: 1.04, off: [.012, -.091, .43],
+    grip: [0, -.105, .09], fore: [0, -.058, -.15], muzzle: [0, .006, -.61], sight: 'reddot', sightY: .094, sightZ: .08,
+    hip: [.12, -.11, -.34], ads: [0, -.094, -.25], adsFov: 58, eject: 1, flashSize: .3, laser: [.035, -.035, -.15], muzzleR: .014 } },
 };
 const REAL_GUN_SCENE = {};
 let gunModelSel = (() => { try { return JSON.parse(store.get('boomGunModel', '{}')) || {}; } catch (e) { return {}; } })();
@@ -4024,42 +4042,75 @@ function realGunDef(model) {
   const v = gunModelSel[model] || Object.keys(all)[0];
   return v !== 'classic' && all[v] && REAL_GUN_SCENE[all[v].file] ? all[v] : null;
 }
+// load each model once and bake its placement: hide / cut the loose pieces, then turn, scale and centre it
 function loadRealGuns() {
   const jobs = [];
   for (const m in REAL_GUN) for (const v in REAL_GUN[m]) {
-    const f = REAL_GUN[m][v].file; if (REAL_GUN_SCENE[f]) continue;
-    jobs.push(new Promise(res => new THREE.GLTFLoader().load(f, gl => { REAL_GUN_SCENE[f] = gl.scene; res(); }, undefined, () => res())));
+    const d = REAL_GUN[m][v]; if (REAL_GUN_SCENE[d.file]) continue;
+    jobs.push(new Promise(res => new THREE.GLTFLoader().load(d.file, gl => {
+      const sc = gl.scene;
+      if (d.hide) sc.traverse(o => { if (o.isMesh && d.hide.test(o.name)) o.visible = false; });
+      const box = () => { sc.updateMatrixWorld(true); const b = new THREE.Box3(); sc.traverse(o => { if (o.isMesh && o.visible) b.expandByObject(o); }); return b; };
+      const h = new THREE.Group(); h.add(sc); h.rotation.y = d.rotY || 0; h.updateMatrixWorld(true);
+      let b = new THREE.Box3(); h.updateMatrixWorld(true); sc.traverse(o => { if (o.isMesh && o.visible) b.expandByObject(o); });
+      const k = d.len / (b.max.z - b.min.z); h.scale.setScalar(k); h.updateMatrixWorld(true);
+      b = new THREE.Box3(); sc.traverse(o => { if (o.isMesh && o.visible) b.expandByObject(o); });
+      h.position.set(-(b.min.x + b.max.x)/2, 0, -b.max.z); h.updateMatrixWorld(true);
+      if (d.cut) {   // drop triangles of loose pieces (spare parts laid out next to the gun in the source file)
+        const a = new THREE.Vector3(), b2 = new THREE.Vector3(), c = new THREE.Vector3();
+        sc.traverse(o => { if (!o.isMesh || !o.geometry.index) return;
+          const g = o.geometry, idx = g.index.array, pos = g.attributes.position, keep = [];
+          for (let t = 0; t < idx.length; t += 3) {
+            a.fromBufferAttribute(pos, idx[t]); b2.fromBufferAttribute(pos, idx[t+1]); c.fromBufferAttribute(pos, idx[t+2]); a.add(b2).add(c).multiplyScalar(1/3).applyMatrix4(o.matrixWorld);
+            if (d.cut.some(q => a.x >= q[0] && a.y >= q[1] && a.z >= q[2] && a.x <= q[3] && a.y <= q[4] && a.z <= q[5])) continue;
+            keep.push(idx[t], idx[t+1], idx[t+2]);
+          }
+          g.setIndex(keep); });
+      }
+      REAL_GUN_SCENE[d.file] = h; res();
+    }, undefined, () => res())));
   }
   return Promise.all(jobs);
+}
+// the stock holo sight (the M16A4's), as a function so a realistic receiver can carry it; y: dot height, z: frame centre
+function holoSight(p, y, z) {
+  const hs = new THREE.Group(); p.add(hs);
+  gB(hs, .004, .042, .05, GM.gun, -.019, y - .004, z); gB(hs, .004, .042, .05, GM.gun, .019, y - .004, z);
+  gB(hs, .042, .006, .05, GM.gun, 0, y + .02, z);
+  gB(hs, .034, .034, .002, GM.glass, 0, y - .002, z - .025);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(.0013, 6, 4), GM.dot); dot.position.set(0, y, z - .027); hs.add(dot);
+  return hs;
 }
 // swap the procedural body for the realistic model; returns false (keep the classic build) if it isn't available
 function realGun(g, u, model) {
   const d = realGunDef(model); if (!d) return false;
-  const body = new THREE.Group(); body.rotation.y = Math.PI; body.position.y = d.dy; g.add(body);
-  body.add(REAL_GUN_SCENE[d.file].clone(true));
+  const body = new THREE.Group(); body.position.set(...d.off); g.add(body);
+  const m = REAL_GUN_SCENE[d.file].clone(true); body.add(m);
   g.updateMatrixWorld(true);
-  // the magazine goes on its own pivot (top of the mag) so reloads drop it out and an extended mag stretches down
-  const mag = new THREE.Group(); g.add(mag); const mi = new THREE.Group(); mi.position.set(0, d.magTop + d.dy, d.magZ); mag.add(mi);
-  const magMesh = []; body.traverse(o => { if (o.isMesh && /^Mag/i.test(o.name)) magMesh.push(o); });
-  mag.updateMatrixWorld(true); for (const o of magMesh) mi.attach(o);
-  u.mag = mag; u.magInner = mi;
-  u.sight = redDot(g, .072, -.04);
-  u.muzzle = V(...d.muzzle); u.sightY = .072;
-  u.hip = V(.12, -.11, -.34); u.ads = V(0, -.072, -.3); u.adsFov = 58; u.eject = 1; u.flashSize = .22;
-  u.real = { grip: V(...d.grip), fore: V(...d.fore) };
+  u.mag = null;
+  if (d.mag) {   // the magazine on its own pivot (top of the mag): reloads drop it out, an extended mag stretches down
+    const mag = new THREE.Group(); g.add(mag); const mi = new THREE.Group(); mi.position.set(...d.magPivot); mag.add(mi);
+    const parts = []; m.traverse(o => { if (o.isMesh && o.visible && d.mag.test(o.name)) parts.push(o); });
+    mag.updateMatrixWorld(true); for (const o of parts) mi.attach(o);
+    if (parts.length) { u.mag = mag; u.magInner = mi; }
+  }
+  u.sight = d.sight === 'holo' ? holoSight(g, d.sightY, d.sightZ) : d.sight === 'reddot' ? redDot(g, d.sightY, d.sightZ) : null;
+  u.muzzle = V(...d.muzzle); u.sightY = d.sightY;
+  u.hip = V(...d.hip); u.ads = V(...d.ads); u.adsFov = d.adsFov; u.eject = d.eject; u.flashSize = d.flashSize;
+  u.real = { grip: V(...d.grip), fore: V(...d.fore), def: d };
   return true;
 }
 function addAttachments(g, u, model, att, fore) {
   if (att.optic === 'acog' && u.sight) {
     u.sight.visible = false;
-    const zc = SIGHT_Z[model] - .02, yc = u.sightY + .008;
+    const zc = (u.real && u.real.def.sightZ != null ? u.real.def.sightZ : SIGHT_Z[model]) - .02, yc = u.sightY + .008;
     scope3x(g, yc, zc);
     u.ads = V(0, -yc, -.207 - zc); u.adsFov = 30; u.acog = true;   // fully aimed, the view switches to the scope picture
-  } else if (att.optic === 'reflex' && RAIL[model]) {
-    const [ry, rz] = RAIL[model], y = ry + .021;
+  } else if (att.optic === 'reflex' && (u.real && u.real.def.rail || RAIL[model])) {
+    const [ry, rz] = u.real && u.real.def.rail || RAIL[model], y = ry + .021;
     miniReflex(g, y, rz); u.ads = V(0, -y, u.ads.z*.75);
   }
-  const r = MUZZLE_R[model] || .018, mz = u.muzzle;
+  const r = (u.real && u.real.def.muzzleR) || MUZZLE_R[model] || .018, mz = u.muzzle;
   if (att.muzzle === 'supp') {
     const s = new THREE.Group(); s.position.copy(mz); g.add(s);
     gC(s, r, r, .17, GM.gun, 0, 0, -.085, 'z', 18); gC(s, r*1.06, r*1.06, .012, GM.steel, 0, 0, -.166, 'z', 18);
@@ -4073,7 +4124,7 @@ function addAttachments(g, u, model, att, fore) {
   }
   if (att.under === 'grip' && fore) gC(g, .012, .014, .075, GM.poly, fore.x, fore.y - .045, fore.z + .005, 'y', 12);
   if (att.under === 'laser') {
-    const [lx, ly, lz] = LASER_AT[model] || [0, -.02, -.2];
+    const [lx, ly, lz] = (u.real && u.real.def.laser) || LASER_AT[model] || [0, -.02, -.2];
     gB(g, .016, .018, .05, GM.poly, lx, ly, lz); gC(g, .005, .005, .004, GM.dot, lx, ly + .002, lz - .026);
     u.laser = true;
   }
@@ -4134,7 +4185,8 @@ const sxk = k => k ? 1 : -1;
 function buildGun(model, withArms, skinId, att) {
   const g = new THREE.Group(), u = g.userData;
   let grip, fore;
-  if (model === 'pistol' || model === 'mpistol') {
+  if (realGun(g, u, model)) { grip = u.real.grip; fore = u.real.fore; }
+  if (!u.real && (model === 'pistol' || model === 'mpistol')) {
     // striker-fired M9 / select-fire G18: polymer frame, steel slide on
     // its own group so it cycles on every shot and locks back on empty; serrations, ported top, dovetail sights
     const mp = model === 'mpistol', L = mp ? 1.06 : 1;
@@ -4173,7 +4225,7 @@ function buildGun(model, withArms, skinId, att) {
     u.muzzle = V(0, .022, mp ? -.21 : -.165); u.sightY = .05; grip = V(0, -.055, .035); fore = V(-.028, -.065, .03);
     u.hip = V(.12, -.10, -.32); u.ads = V(0, -.05, -.36); u.adsFov = 62; u.eject = 0; u.flashSize = mp ? .18 : .22;
   }
-  if (model === 'magnum') {
+  if (!u.real && model === 'magnum') {
     gB(g, .03, .065, .1, GM.gun, 0, 0, -.01);
     u.cyl = gC(g, .03, .03, .062, GM.gun, 0, .005, -.035, 'z', 12);
     for (let k = 0; k < 6; k++) { const a = k/6*Math.PI*2 + .26; gB(g, .006, .006, .05, GM.poly, Math.cos(a)*.029, .005 + Math.sin(a)*.029, -.035); }
@@ -4188,8 +4240,7 @@ function buildGun(model, withArms, skinId, att) {
     u.mag = null;     u.muzzle = V(0, .021, -.26); u.sightY = .052; grip = V(0, -.065, .06); fore = V(-.028, -.075, .055);
     u.hip = V(.12, -.10, -.32); u.ads = V(0, -.052, -.38); u.adsFov = 60; u.eject = -1; u.flashSize = .32;
   }
-  if (model === 'smg' && realGun(g, u, model)) { grip = u.real.grip; fore = u.real.fore; }
-  else if (model === 'smg') {
+  if (!u.real && model === 'smg') {
     gB(g, .045, .06, .3, GM.gun, 0, 0, -.05);
     gB(g, .046, .02, .12, GM.poly, 0, -.018, -.17);
     gB(g, .022, .01, .26, GM.poly, 0, .035, -.05);
@@ -4213,7 +4264,7 @@ function buildGun(model, withArms, skinId, att) {
     u.muzzle = V(0, .005, -.44); u.sightY = .072; grip = V(0, -.065, .065); fore = V(0, -.075, -.24);
     u.hip = V(.12, -.11, -.34); u.ads = V(0, -.072, -.3); u.adsFov = 58; u.eject = 1; u.flashSize = .22;
   }
-  if (model === 'ar') {
+  if (!u.real && model === 'ar') {
     // M16A4: flat-top upper, RAS, 20" barrel, A2 birdcage, STANAG mag, A2 stock. Hooks kept so ADS / kick stay the same.
     gB(g, .052, .062, .28, GM.gun, 0, .012, -.04);
     gB(g, .054, .066, .22, GM.gun, 0, -.04, .01);
@@ -4251,7 +4302,7 @@ function buildGun(model, withArms, skinId, att) {
     u.muzzle = V(0, 0, -.74); u.sightY = .068; grip = V(0, -.095, .085); fore = V(0, -.058, -.33);
     u.hip = V(.11, -.09, -.32); u.ads = V(0, -.068, -.27); u.adsFov = 55; u.eject = 1; u.flashSize = .27;
   }
-  if (model === 'lmg') {
+  if (!u.real && model === 'lmg') {
     gB(g, .07, .085, .38, GM.gun, 0, 0, -.02);
     gB(g, .074, .022, .18, GM.gun, 0, .052, -.04);
     gC(g, .026, .026, .3, GM.poly, 0, .005, -.37);
@@ -4270,7 +4321,7 @@ function buildGun(model, withArms, skinId, att) {
     u.muzzle = V(0, .005, -.78); u.sightY = .094; grip = V(0, -.095, .09); fore = V(0, -.055, -.36);
     u.hip = V(.12, -.11, -.34); u.ads = V(0, -.094, -.25); u.adsFov = 58; u.eject = 1; u.flashSize = .3;
   }
-  if (model === 'shotgun') {
+  if (!u.real && model === 'shotgun') {
     gB(g, .046, .066, .23, GM.gun, 0, 0, 0);
     gB(g, .047, .02, .08, GM.steel, 0, .012, -.02);
     gC(g, .012, .012, .52, GM.gun, 0, .02, -.37);
@@ -4290,7 +4341,7 @@ function buildGun(model, withArms, skinId, att) {
     u.muzzle = V(0, .02, -.63); u.sightY = .038; grip = V(0, -.07, .12); fore = V(0, -.04, -.3);
     u.hip = V(.12, -.10, -.34); u.ads = V(0, -.038, -.36); u.adsFov = 66; u.eject = 2; u.flashSize = .34;
   }
-  if (model === 'dmr') {   // a long, slim semi-auto: free-floated handguard, straight 15-round box, fixed stock with a cheek riser
+  if (!u.real && model === 'dmr') {   // a long, slim semi-auto: free-floated handguard, straight 15-round box, fixed stock with a cheek riser
     gB(g, .05, .07, .34, GM.gun, 0, 0, -.04);
     gB(g, .046, .05, .18, GM.gun, 0, -.05, .0);
     gB(g, .054, .056, .36, GM.poly, 0, -.002, -.38);
@@ -4317,7 +4368,7 @@ function buildGun(model, withArms, skinId, att) {
     u.muzzle = V(0, 0, -.9); u.sightY = .075; grip = V(0, -.095, .085); fore = V(0, -.06, -.37);
     u.hip = V(.11, -.10, -.32); u.ads = V(0, -.075, -.24); u.adsFov = 48; u.eject = 1; u.flashSize = .3;
   }
-  if (model === 'sniper') {
+  if (!u.real && model === 'sniper') {
     gB(g, .05, .06, .32, GM.gun, 0, 0, -.02);
     gB(g, .056, .07, .4, GM.poly, 0, -.035, -.32);
     gC(g, .013, .016, .55, GM.gun, 0, .008, -.66);
