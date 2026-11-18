@@ -5,3 +5,4 @@ dist-win/
 .DS_Store
 .claude/
 _site/
+tools/guns/tex/

@@ -1,0 +1,8 @@
+{
+ "_steps": [
+  "unzip ~/Downloads/m14_ebr.zip",
+  "no textures kept: the game assigns gun metal / polymer (REAL_GUN.dmr.mats)"
+ ],
+ "drop": "^Lamp",
+ "dropMaterials": true
+}

@@ -1,0 +1,38 @@
+{
+ "_steps": [
+  "unzip ~/Downloads/357_python_revolver_riggedgame_ready.zip",
+  "sips -Z 1024 -s format jpeg the Revolver maps, -Z 256 the Bullets maps, into tools/guns/tex/"
+ ],
+ "drop": "^(Reload Bones|SpeedLoader|Shell[0-9]|SL_)",
+ "bake": true,
+ "split": [
+  {
+   "name": "Cylinder",
+   "bones": "^(Extractor|Cylinder|Bullet)"
+  },
+  {
+   "name": "Hammer",
+   "bones": "^Hammer"
+  },
+  {
+   "name": "Trigger",
+   "bones": "^Trigger"
+  }
+ ],
+ "images": {
+  "textures/Revolver_baseColor.jpeg": "tex/py_base.jpg",
+  "textures/Revolver_metallicRoughness.png": "tex/py_mr.jpg",
+  "textures/Revolver_normal.png": "tex/py_nrm.jpg",
+  "textures/Bullets__Shells_baseColor.png": "tex/py_b_base.jpg",
+  "textures/Bullets__Shells_metallicRoughness.png": "tex/py_b_mr.jpg",
+  "textures/Bullets__Shells_normal.png": "tex/py_b_nrm.jpg"
+ },
+ "align": {
+  "bone": "^Cylinder_04$",
+  "to": [
+   0,
+   0,
+   -1
+  ]
+ }
+}

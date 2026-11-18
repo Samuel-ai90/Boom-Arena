@@ -1,0 +1,38 @@
+{
+ "_steps": [
+  "unzip ~/Downloads/g18.zip",
+  "sips -Z 2048 -s format jpeg base and normal, -Z 1024 metallicRoughness, into tools/guns/tex/"
+ ],
+ "bake": true,
+ "split": [
+  {
+   "name": "Slide",
+   "bones": "^G18_(slide|selectfire)"
+  },
+  {
+   "name": "Mag",
+   "bones": "^G18_mag"
+  },
+  {
+   "name": "Casing",
+   "bones": "^G18_casing"
+  },
+  {
+   "name": "Trigger",
+   "bones": "^G18_trigger"
+  },
+  {
+   "name": "Barrel",
+   "bones": "^G18_barrel"
+  },
+  {
+   "name": "Bullet",
+   "bones": "^G18_bullet"
+  }
+ ],
+ "images": {
+  "textures/g18.001_baseColor.png": "tex/g18_base.jpg",
+  "textures/g18.001_metallicRoughness.png": "tex/g18_mr.jpg",
+  "textures/g18.001_normal.png": "tex/g18_nrm.jpg"
+ }
+}

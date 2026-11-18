@@ -3485,7 +3485,7 @@ const SHOT_REC = {
   dmr:     ['dmr', 1, 1.05],      // .308: Mk 14
   sniper:  ['sniper', 1, 1.1],    // 7.62x54R: M24
   shotgun: ['shotgun', 1, 1.1],   // 20 gauge: M870
-  magnum:  ['heavy', .8, 1.1],    // 7.62x39 pitched down for the .44: Model 629
+  magnum:  ['heavy', .8, 1.1],    // 7.62x39 pitched down for the .357: Python
 };
 const SHOT_BUF = {};
 // Recorded effects (Kenney Impact / Sci-fi Sounds, CC0): body hits, helmet pings on headshots, kill thumps, the blast
@@ -3853,7 +3853,7 @@ const PORT = { pistol: [.017, .03, -.03], smg: [.026, .02, -.03], ar: [.027, 0, 
 const _sp = V(), _sx = V(), _sy = V(), _sz = V(), _sq = new THREE.Quaternion(), _se = new THREE.Euler(), _ss = V(1, 1, 1);
 function ejectShell(w) {
   if (w < 0 || w === undefined) return;
-  const gun = guns[weapon], port = PORT[gun.userData.model] || [.03, 0, -.03];
+  const gun = guns[weapon], ru = gun.userData.real, port = (ru && ru.def.port) || PORT[gun.userData.model] || [.03, 0, -.03];
   gun.updateWorldMatrix(true, false); camera.updateMatrixWorld();
   _sp.set(port[0], port[1], port[2]); gun.localToWorld(_sp); camera.localToWorld(_sp);
   camera.matrixWorld.extractBasis(_sx, _sy, _sz);
@@ -4348,6 +4348,29 @@ const REAL_GUN = {
     rotY: Math.PI, len: 1.04, off: [.012, -.091, .43],
     grip: [0, -.105, .09], fore: [0, -.058, -.15], muzzle: [0, .006, -.61], sight: 'reddot', sightY: .094, sightZ: .08,
     hip: [.12, -.11, -.34], ads: [0, -.094, -.25], adsFov: 58, eject: 1, flashSize: .3, laser: [.035, -.035, -.15], muzzleR: .014 } },
+  // M24 (scope part of the model): the bolt and the magazine are their own pieces; the silencer from the source file
+  // is kept hidden and goes on with the Silencer attachment
+  sniper: { konrad: { name: 'Realistic', file: 'weapons/m24-konrad.glb', credit: 'Sniper Rifle M24 by Ivan.Konrad',
+    rotY: Math.PI, len: 1.0926, off: [.003, -.013, .425], hide: /^Supp/, mag: /^Mag/, magPivot: [0, -.068, -.065], magShift: [0, .026, 0],
+    bolt: /^Bolt/, boltPivot: [0, .0065, .035], supp: /^Supp/, suppShift: .032, suppLen: .24,
+    grip: [0, -.095, .095], fore: [0, -.047, -.19], muzzle: [0, .0065, -.668], sight: 'none', scope: true, sightY: .051, glint: [0, .051, -.29],
+    hip: [.11, -.10, -.32], ads: [0, -.051, -.2], adsFov: 20, eject: 3, flashSize: .4, laser: [.028, -.02, -.26], muzzleR: .012, port: [.016, .008, -.04] } },
+  // Colt Python: the cylinder (with its crane) swings out to the left for reloads, the hammer drops on every shot
+  magnum: { erai: { name: 'Realistic', file: 'weapons/python-erai.glb', credit: '357 Python Revolver by Erai',
+    rotY: Math.PI, len: .292, off: [0, -.019, .075], cyl: /^Cylinder/, cylPivot: [-.01, -.0013, -.05], hammer: /^Hammer/, hammerPivot: [0, .0115, -.0193],
+    grip: [0, -.051, .035], fore: [-.026, -.062, .03], muzzle: [0, .0255, -.215], sight: 'none', sightY: .0445,
+    hip: [.12, -.10, -.32], ads: [0, -.0445, -.37], adsFov: 60, eject: -1, flashSize: .32, rail: [.043, -.03], laser: [0, -.006, -.15], muzzleR: .011 } },
+  // Glock 18: the slide is its own piece, so it cycles on every shot and locks back on an empty magazine
+  mpistol: { iva: { name: 'Realistic', file: 'weapons/g18-iva.glb', credit: 'G18 by IVA',
+    rotY: Math.PI, len: .206, off: [0, -.029, .077], hide: /^Bullet/, mag: /^Mag/, magPivot: [0, .029, .027], slide: /^Slide/,
+    grip: [0, -.051, .035], fore: [-.026, -.062, .03], muzzle: [0, .0285, -.129], sight: 'none', sightY: .0435,
+    hip: [.12, -.10, -.32], ads: [0, -.0435, -.36], adsFov: 62, eject: 0, flashSize: .18, rail: [.044, -.02], laser: [0, -.01, -.1], muzzleR: .011, port: [.014, .034, .005] } },
+  // Mk 14 EBR: a hobbyist model with a photo texture, so it wears the game's own gun metal and polymer (camos apply)
+  dmr: { gergilin: { name: 'Realistic', file: 'weapons/m14ebr-gergilin.glb', credit: 'M14 eBR by gergilin',
+    rotY: -Math.PI/2, len: .95, off: [.0025, -.0255, .29], hide: /^Cylinder00[12]_/, mag: /^Cube008_/, magPivot: [0, -.0175, -.085],
+    mats: [[/^Cube0(03|12|14|15)_/, 'poly'], [/./, 'gun']],
+    grip: [0, -.09, .085], fore: [0, -.05, -.22], muzzle: [0, 0, -.66], sight: 'reddot', sightY: .0495, sightZ: -.02,
+    hip: [.11, -.10, -.32], ads: [0, -.0495, -.26], adsFov: 48, eject: 1, flashSize: .3, laser: [.022, -.012, -.3], muzzleR: .011, port: [.016, 0, -.08] } },
 };
 const REAL_GUN_SCENE = {};
 let gunModelSel = (() => { try { return JSON.parse(store.get('boomGunModel', '{}')) || {}; } catch (e) { return {}; } })();
@@ -4365,6 +4388,8 @@ function loadRealGuns() {
     jobs.push(new Promise(res => new THREE.GLTFLoader().load(d.file, gl => {
       const sc = gl.scene;
       if (d.hide) sc.traverse(o => { if (o.isMesh && d.hide.test(o.name)) o.visible = false; });
+      // the game's own materials for untextured models (shared GM materials, so weapon camos apply to them too)
+      if (d.mats) sc.traverse(o => { if (o.isMesh) { const r = d.mats.find(([re]) => re.test(o.name)); if (r) o.material = GM[r[1]]; } });
       const box = () => { sc.updateMatrixWorld(true); const b = new THREE.Box3(); sc.traverse(o => { if (o.isMesh && o.visible) b.expandByObject(o); }); return b; };
       const h = new THREE.Group(); h.add(sc); h.rotation.y = d.rotY || 0; h.updateMatrixWorld(true);
       let b = new THREE.Box3(); h.updateMatrixWorld(true); sc.traverse(o => { if (o.isMesh && o.visible) b.expandByObject(o); });
@@ -4417,6 +4442,24 @@ function realGun(g, u, model) {
     mag.updateMatrixWorld(true); for (const o of parts) mi.attach(o);
     if (parts.length) { u.mag = mag; u.magInner = mi; }
   }
+  if (d.magShift && u.mag) u.mag.position.add(V(...d.magShift));   // a magazine modelled hanging below its well, pushed home
+  // moving parts on their own pivots (gun frame): bolt handle, revolver cylinder + crane, hammer
+  const pivot = (re, at) => {
+    const grp = new THREE.Group(); grp.position.set(...at); g.add(grp); grp.updateMatrixWorld(true);
+    const parts = []; m.traverse(o => { if (o.isMesh && re.test(o.name)) parts.push(o); });
+    for (const o of parts) grp.attach(o);
+    return parts.length ? grp : (g.remove(grp), null);
+  };
+  if (d.bolt) { u.bolt = pivot(d.bolt, d.boltPivot); if (u.bolt) u.boltHome = u.bolt.position.clone(); }
+  if (d.slide) u.slide = pivot(d.slide, [0, 0, 0]);
+  if (d.cyl) u.cylSwing = pivot(d.cyl, d.cylPivot);
+  if (d.hammer) u.hammer = pivot(d.hammer, d.hammerPivot);
+  if (d.supp) { u.realSupp = pivot(d.supp, [0, 0, 0]); if (u.realSupp) u.realSupp.position.z += d.suppShift; }   // closes the gap to the muzzle
+  if (d.scope) {   // a scope that glints at whoever it's pointed at
+    u.scope = true;
+    const glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: TX.flash, color: new THREE.Color(9, 9, 8), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    glint.position.set(...d.glint); glint.scale.setScalar(.5); glint.visible = false; g.add(glint); u.glint = glint;
+  }
   u.sight = d.sight === 'holo' ? holoSight(g, d.sightY, d.sightZ) : d.sight === 'reddot' ? redDot(g, d.sightY, d.sightZ) : null;
   u.muzzle = V(...d.muzzle); u.sightY = d.sightY;
   u.hip = V(...d.hip); u.ads = V(...d.ads); u.adsFov = d.adsFov; u.eject = d.eject; u.flashSize = d.flashSize;
@@ -4434,7 +4477,10 @@ function addAttachments(g, u, model, att, fore) {
     miniReflex(g, y, rz); u.ads = V(0, -y, u.ads.z*.75);
   }
   const r = (u.real && u.real.def.muzzleR) || MUZZLE_R[model] || .018, mz = u.muzzle;
-  if (att.muzzle === 'supp') {
+  if (att.muzzle === 'supp' && u.realSupp) {   // the model's own silencer
+    u.realSupp.traverse(o => { o.visible = true; });
+    u.muzzle = mz.clone().add(V(0, 0, -u.real.def.suppLen)); u.flashSize *= .35; u.supp = true;
+  } else if (att.muzzle === 'supp') {
     const s = new THREE.Group(); s.position.copy(mz); g.add(s);
     gC(s, r, r, .17, GM.gun, 0, 0, -.085, 'z', 18); gC(s, r*1.06, r*1.06, .012, GM.steel, 0, 0, -.166, 'z', 18);
     for (let k = 0; k < 4; k++) gC(s, r*1.03, r*1.03, .005, GM.poly, 0, 0, -.03 - k*.035, 'z', 18);
@@ -8237,7 +8283,17 @@ function updateView(dt) {
   if (u.bolt) {
     const q = action && action.type === 'bolt' ? clamp(actP, 0, 1) : 0;
     const lift = q < .3 ? q/.3 : q < .7 ? 1 : 1 - (q - .7)/.3, back = q < .3 ? 0 : q < .5 ? (q - .3)/.2 : q < .7 ? 1 - (q - .5)/.2 : 0;
-    u.bolt.rotation.z = lift*1.2; u.bolt.position.z = .08 + back*.07;
+    u.bolt.rotation.z = lift*1.2; u.bolt.position.z = (u.boltHome ? u.boltHome.z : .08) + back*.07;
+  }
+  // revolver: the hammer drops forward on the shot and is back at full cock before the next one
+  if (u.hammer) {
+    const since = now - (player.lastShot || -9), iv = W.rate || .4;
+    u.hammer.rotation.x = W.model === u.model && since < iv ? -.42*(1 - smooth(since, iv*.4, iv*.9)) : 0;
+  }
+  // ...and on a reload the cylinder swings out to the left on its crane, empties, and snaps shut
+  if (u.cylSwing) {
+    const pr = now < reloadUntil ? clamp((now - reloadStart)/(reloadUntil - reloadStart), 0, 1) : 0;
+    u.cylSwing.rotation.z = 1.2*smooth(pr, .05, .18)*(1 - smooth(pr, .74, .84));
   }
   if (u.pump) u.pump.position.z = u.pumpHome.z + (action && action.type === 'pump' ? actK*.08 : 0);
   if (inspectT > 0) { inspectT -= dt; if (adsHeld || firing || now < reloadUntil || !player.alive) inspectT = 0; }

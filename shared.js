@@ -16,7 +16,7 @@
       kick: .034, vkick: .013, hkick: .009, range: [38, 75], minDmg: .75, move: .85, adsTime: .32, snd: 'lmg', bot: { dmg: 12, rate: .2, burst: [6, 12], acc: .45, pref: [10, 30] } },
     { id: 'pistol', model: 'pistol', name: 'M9', cls: 'Pistol', slot: 1, dmg: 30, hs: 1.8, rate: .14, mag: 12, reload: 1.25, reloadEmpty: 1.55, spread: .008, adsSpread: .002, pen: 0.2, pellets: 1, auto: false,
       kick: .05, vkick: .018, hkick: .006, range: [14, 30], minDmg: .6, move: 1.1, adsTime: .12, snd: 'pistol', bot: { dmg: 12, rate: .3, burst: [1, 3], acc: .5, pref: [5, 16] } },
-    { id: 'magnum', model: 'magnum', name: 'Model 629', cls: 'Revolver', slot: 1, dmg: 62, hs: 1.8, rate: .42, mag: 6, reload: 2.4, spread: .012, adsSpread: .002, pen: 0.35, pellets: 1, auto: false,
+    { id: 'magnum', model: 'magnum', name: 'Python', cls: 'Revolver', slot: 1, dmg: 62, hs: 1.8, rate: .42, mag: 6, reload: 2.4, spread: .012, adsSpread: .002, pen: 0.35, pellets: 1, auto: false,
       kick: .12, vkick: .05, hkick: .012, range: [18, 40], minDmg: .65, move: 1.1, adsTime: .16, snd: 'magnum', bot: { dmg: 27, rate: .62, burst: [1, 2], acc: .52, pref: [7, 22] } },
     // new guns go on the end: online messages refer to guns by their place in this list
     { id: 'dmr', model: 'dmr', name: 'Mk 14', cls: 'Marksman Rifle', slot: 0, dmg: 46, hs: 2, rate: .19, mag: 15, reload: 2.3, reloadEmpty: 2.9, spread: .035, adsSpread: .0015, pen: 0.6, pellets: 1, auto: false,

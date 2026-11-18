@@ -1,0 +1,11 @@
+Model Information:
+* title:	Sniper Rifle M24
+* source:	https://sketchfab.com/3d-models/sniper-rifle-m24-952aa885201649c9992f893e31a0beb3
+* author:	Ivan.Konrad (https://sketchfab.com/Ivan.Konrad)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Sniper Rifle M24" (https://sketchfab.com/3d-models/sniper-rifle-m24-952aa885201649c9992f893e31a0beb3) by Ivan.Konrad (https://sketchfab.com/Ivan.Konrad) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
