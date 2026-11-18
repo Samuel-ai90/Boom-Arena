@@ -81,6 +81,7 @@ else {
         await shot('lobby');
         if (process.env.BOOM_SHOT) {
           await js(`document.getElementById('lbPlay').click()`); await wait(9000);
+          if (process.env.BOOM_TEST_JS) { console.log('JS', await js(process.env.BOOM_TEST_JS)); await wait(1500); }   // a test can set up the view it wants to see
           console.log('MATCH', await js(`new Promise(r => { let n = 0; const t0 = performance.now(); (function f() { n++; if (performance.now() - t0 < 2000) requestAnimationFrame(f); else r(JSON.stringify({ running, bots: bots.length, fps: Math.round(n/2) })); })(); })`));
           await shot('match');
         }

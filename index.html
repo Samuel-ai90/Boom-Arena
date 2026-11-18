@@ -736,7 +736,7 @@ class RaysPass extends THREE.Pass {
   render(r, writeBuffer, readBuffer) {
     const rays = this.rays !== false && this.sunVis > .001;
     finalPass.uniforms.raysK.value = rays ? this.strength*this.sunVis : 0;
-    if (rays || this.blurOn || finalPass.uniforms.ads.value > .01) {   // where your own gun is, so it doesn't get blurred or streaked
+    if (rays || this.blurOn || finalPass.uniforms.ads.value > .01 || finalPass.uniforms.aoK.value > .001) {   // where your own gun is, so it doesn't get blurred or streaked
       const cc = r.getClearColor(_cc), ca = r.getClearAlpha();
       r.setRenderTarget(this.rtMask); r.setClearColor(0x000000, 1); r.clear();
       vmScene.overrideMaterial = this.maskMat; r.render(vmScene, vmCamera); vmScene.overrideMaterial = null;
@@ -748,12 +748,67 @@ class RaysPass extends THREE.Pass {
     q.material = this.blur; this.blur.uniforms.tDiffuse.value = this.rtA.texture; r.setRenderTarget(this.rtB); q.render(r);
   }
 }
+// Ambient occlusion: the soft contact shadow where walls meet the ground, under vehicles and in corners. Worked out from
+// the depth buffer at half resolution (scene only, before your own gun is drawn), smoothed with a depth-aware blur and
+// multiplied in by the final pass. A dozen taps a pixel at half size: a small cost next to the scene itself.
+class AOPass extends THREE.Pass {
+  constructor(depthTex) {
+  super();
+  this.needsSwap = false; this.on = false; this.scale = .5;
+  const opts = { depthBuffer: false, stencilBuffer: false };
+  this.rtA = new THREE.WebGLRenderTarget(4, 4, opts); this.rtB = new THREE.WebGLRenderTarget(4, 4, opts);
+  const common = `uniform sampler2D tDepth; uniform mat4 projInv; varying vec2 vUv;
+    vec3 viewPos(vec2 uv){ float d=texture2D(tDepth,uv).x; vec4 p=projInv*vec4(uv*2.-1.,d*2.-1.,1.); return p.xyz/p.w; }`;
+  this.ao = new THREE.ShaderMaterial({ uniforms: { tDepth: { value: depthTex }, projInv: { value: new THREE.Matrix4() }, py: { value: 1 }, texel: { value: new THREE.Vector2() }, radius: { value: .9 }, strength: { value: 2 } },
+    vertexShader: POST_VS, depthTest: false, depthWrite: false,
+    fragmentShader: common + `uniform vec2 texel; uniform float py, radius, strength;
+      void main(){
+        float d0=texture2D(tDepth,vUv).x; if (d0>=.99999) { gl_FragColor=vec4(1.); return; }
+        vec3 p=viewPos(vUv);
+        vec3 px1=viewPos(vUv+vec2(texel.x,0.)), px0=viewPos(vUv-vec2(texel.x,0.)), py1=viewPos(vUv+vec2(0.,texel.y)), py0=viewPos(vUv-vec2(0.,texel.y));
+        vec3 dx=abs(px1.z-p.z)<abs(p.z-px0.z)?px1-p:p-px0, dy=abs(py1.z-p.z)<abs(p.z-py0.z)?py1-p:p-py0;
+        vec3 n=normalize(cross(dx,dy));
+        float sr=radius*py*.5/max(.1,-p.z);   // the world radius, in screen units at this depth
+        if (sr<texel.y*1.5) { gl_FragColor=vec4(1.); return; }
+        sr=min(sr,.1);
+        float ang=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))))*6.2832, occ=0., r2=radius*radius;
+        for (int i=0;i<12;i++) {
+          float t=(float(i)+.5)/12., a=ang+float(i)*2.3999632;
+          vec2 off=vec2(cos(a)*texel.x/texel.y,sin(a))*sr*t;
+          vec3 v=viewPos(vUv+off)-p; float vv=dot(v,v);
+          occ+=max(0.,dot(v,n)/sqrt(vv+1e-4)-.12)*max(0.,1.-vv/r2);
+        }
+        float ao=clamp(1.-occ/12.*strength,0.,1.);
+        gl_FragColor=vec4(ao,ao,ao,1.);
+      }` });
+  this.blur = new THREE.ShaderMaterial({ uniforms: { tAO: { value: null }, tDepth: { value: depthTex }, projInv: { value: new THREE.Matrix4() }, dir: { value: new THREE.Vector2() } },
+    vertexShader: POST_VS, depthTest: false, depthWrite: false,
+    fragmentShader: common + `uniform sampler2D tAO; uniform vec2 dir;
+      void main(){
+        float z0=-viewPos(vUv).z, s=0., w=0.;
+        for (int i=-3;i<=3;i++) { vec2 uv=vUv+dir*float(i); float z=-viewPos(uv).z, k=exp(-abs(z-z0)/(z0*.05+.05))*(1.-abs(float(i))*.2); s+=texture2D(tAO,uv).r*k; w+=k; }
+        gl_FragColor=vec4(vec3(s/max(w,1e-4)),1.);
+      }` });
+  this.quad = new THREE.FullScreenQuad(this.ao);
+  }
+  setSize(w, h) { const sw = Math.max(4, Math.round(w*this.scale)), sh = Math.max(4, Math.round(h*this.scale)); this.rtA.setSize(sw, sh); this.rtB.setSize(sw, sh); this.ao.uniforms.texel.value.set(1/sw, 1/sh); }
+  render(r) {
+    finalPass.uniforms.aoK.value = this.on ? 1 : 0;
+    if (!this.on) return;
+    const q = this.quad, pi = camera.projectionMatrixInverse, tx = this.ao.uniforms.texel.value;
+    this.ao.uniforms.projInv.value.copy(pi); this.blur.uniforms.projInv.value.copy(pi); this.ao.uniforms.py.value = camera.projectionMatrix.elements[5];
+    q.material = this.ao; r.setRenderTarget(this.rtA); q.render(r);
+    q.material = this.blur; this.blur.uniforms.tAO.value = this.rtA.texture; this.blur.uniforms.dir.value.set(tx.x, 0); r.setRenderTarget(this.rtB); q.render(r);
+    this.blur.uniforms.tAO.value = this.rtB.texture; this.blur.uniforms.dir.value.set(0, tx.y); r.setRenderTarget(this.rtA); q.render(r);
+    finalPass.uniforms.tAO.value = this.rtA.texture;
+  }
+}
 const FinalShader = {
-  uniforms: { tDiffuse:{value:null}, exposure:{value:.94}, hurt:{value:0}, time:{value:0}, texel:{value:new THREE.Vector2(1/1920, 1/1080)},
+  uniforms: { tDiffuse:{value:null}, tAO:{value:null}, aoK:{value:0}, exposure:{value:.94}, hurt:{value:0}, time:{value:0}, texel:{value:new THREE.Vector2(1/1920, 1/1080)},
     sunUv:{value:new THREE.Vector2(.5, .5)}, flare:{value:0}, ads:{value:0}, sharp:{value:EXTREME ? .2 : .15}, grain:{value:EXTREME ? .008 : .005}, sat:{value:MAPDEF.br ? .94 : .98}, split:{value:1},
     tRays:{value:null}, raysK:{value:0}, tBloom:{value:null}, bloomK:{value:0}, tMask:{value:null}, blurVec:{value:new THREE.Vector2()} },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-  fragmentShader: `uniform sampler2D tDiffuse, tRays, tBloom, tMask; uniform float exposure, hurt, time, flare, ads, sharp, grain, raysK, bloomK, sat, split; uniform vec2 texel, sunUv, blurVec; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse, tRays, tBloom, tMask, tAO; uniform float aoK, exposure, hurt, time, flare, ads, sharp, grain, raysK, bloomK, sat, split; uniform vec2 texel, sunUv, blurVec; varying vec2 vUv;
     vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.); }
     float hash(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
     vec3 ghost(vec2 asp, vec2 pos, float size, vec3 col){ float r=length((vUv-pos)*asp); return col*smoothstep(size,size*.55,r); }
@@ -764,7 +819,7 @@ const FinalShader = {
       if (ab>.0002) c=vec3(texture2D(tDiffuse,vUv+d*ab).r, texture2D(tDiffuse,vUv).g, texture2D(tDiffuse,vUv-d*ab).b);
       else c=texture2D(tDiffuse,vUv).rgb;
       // the gun's silhouette (quarter res): no motion blur or sunbeams on your own weapon
-      float gun=(raysK>.001||dot(blurVec,blurVec)>1e-6||ads>.01)?texture2D(tMask,vUv).r:0.;
+      float gun=(raysK>.001||aoK>.001||dot(blurVec,blurVec)>1e-6||ads>.01)?texture2D(tMask,vUv).r:0.;
       // camera-rotation motion blur, only on frames you're turning
       if (dot(blurVec,blurVec)>1e-6) {
         vec3 acc=c;
@@ -784,6 +839,7 @@ const FinalShader = {
         b+=texture2D(tDiffuse,vUv+rad*vec2(.7,.7)).rgb+texture2D(tDiffuse,vUv+rad*vec2(-.7,.7)).rgb+texture2D(tDiffuse,vUv+rad*vec2(.7,-.7)).rgb+texture2D(tDiffuse,vUv+rad*vec2(-.7,-.7)).rgb;
         c=mix(c,b*.25,k);
       }
+      if (aoK>.001) c*=mix(1.,texture2D(tAO,vUv).r,aoK*(1.-gun));
       // sunbeams and bloom glow, computed small and added here
       if (raysK>.001) c+=texture2D(tRays,vUv).r*raysK*(1.-gun)*vec3(1.,.8,.58);
       if (bloomK>.001) c+=texture2D(tBloom,vUv).rgb*bloomK*(1.-gun*.6);
@@ -815,7 +871,7 @@ const FinalShader = {
       gl_FragColor=vec4(c,1.);
     }`,
 };
-let composer = null, finalPass = null, bloomPass = null, raysPass = null, motionBlur = EXTREME;
+let composer = null, finalPass = null, bloomPass = null, raysPass = null, aoPass = null, motionBlur = EXTREME;
 if (HIGH) {
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
   const params = { type: THREE.HalfFloatType, format: THREE.RGBAFormat };
@@ -828,6 +884,8 @@ if (HIGH) {
   // the gun go into it. Sunbeams, bloom and motion blur are worked out separately (small) and the final pass,
   // which reads each pixel once anyway, adds them in on the way to the screen.
   composer.addPass(new THREE.RenderPass(scene, camera));
+  aoPass = new AOPass(rt.depthTexture);
+  composer.addPass(aoPass);
   composer.addPass({ enabled:true, needsSwap:false, renderToScreen:false, clear:false, setSize(){},
     render(r, w, read) { r.setRenderTarget(read); r.clearDepth(); r.render(vmScene, vmCamera); } });
   finalPass = new THREE.ShaderPass(FinalShader);
@@ -3430,8 +3488,19 @@ const SHOT_REC = {
   magnum:  ['heavy', .8, 1.1],    // 7.62x39 pitched down for the .44: Model 629
 };
 const SHOT_BUF = {};
+// Recorded effects (Kenney Impact / Sci-fi Sounds, CC0): body hits, helmet pings on headshots, kill thumps, the blast
+// transient of a grenade and a bullet striking a surface. Files in sounds/fx; anything not loaded yet just stays quiet.
+const FX_FILES = { hit: 5, head: 3, kill: 3, explosion: 1, impact: 1 }, FX_BUF = {};
+function fxBuf(k) { const a = FX_BUF[k]; return a && a.length ? a[Math.floor(Math.random()*a.length)] : null; }
+function fxPlay(k, vol, { rate = 1, pan = 0, at = 0, dest = null, wet = false } = {}) {
+  const buf = fxBuf(k); if (!buf || bgMuted || !AC) return null;
+  const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = buf; s.playbackRate.value = rate; g.gain.value = vol;
+  s.connect(g); g.connect(dest || outNode(1, pan, wet)); s.start(at || AC.currentTime); return s;
+}
 function loadShotRecordings() {
   if (!/^https?:$/.test(location.protocol)) return;   // file:// pages can't fetch them; the synth plays instead
+  for (const k in FX_FILES) for (let i = 1; i <= FX_FILES[k]; i++)
+    fetch(`sounds/fx/${k}${FX_FILES[k] > 1 ? i : ''}.m4a`).then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => AC.decodeAudioData(b)).then(buf => { (FX_BUF[k] = FX_BUF[k] || []).push(buf); }).catch(() => {});
   for (const f of new Set(Object.values(SHOT_REC).map(r => r[0])))
     fetch(`sounds/guns/${f}.m4a`).then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => AC.decodeAudioData(b)).then(buf => { SHOT_BUF[f] = buf; }).catch(() => {});
 }
@@ -3501,7 +3570,13 @@ function mech(type, delay = 0, vol = .55) {
 }
 // hit confirm: a dry tick with a little body under it; the head adds a bright metallic tink
 function hitSound(head) {
-  if (!S.hitSounds || bgMuted || !AC || !SYNTH_SFX.chimes) return;
+  if (!S.hitSounds || bgMuted || !AC) return;
+  if (FX_BUF.hit) {   // a dull body thud; a headshot adds the ping of a round off a helmet
+    fxPlay('hit', head ? .5 : .62, { rate: rand(.94, 1.06) });
+    if (head) fxPlay('head', .5, { rate: rand(.96, 1.08) });
+    return;
+  }
+  if (!SYNTH_SFX.chimes) return;
   const t = AC.currentTime, out = outNode(head ? .55 : .42, 0, false);
   src(.028, 'bandpass', head ? 4300 : 2700, 1, out, t, 2.5); src(.05, 'lowpass', 380, .9, out, t, 1);
   tone(head ? 1700 : 1150, .045, .06, 'square');
@@ -3509,7 +3584,13 @@ function hitSound(head) {
 }
 // kill confirm: a low thump and a rising two-note chime (three on a headshot)
 function killSound(head) {
-  if (!S.hitSounds || bgMuted || !AC || !SYNTH_SFX.chimes) return;
+  if (!S.hitSounds || bgMuted || !AC) return;
+  if (FX_BUF.kill) {   // a heavy thump that says "down"; a headshot kill rings the helmet too
+    fxPlay('kill', .75, { rate: rand(.95, 1.03) });
+    if (head) fxPlay('head', .55, { rate: rand(.9, .98), at: AC.currentTime + .03 });
+    return;
+  }
+  if (!SYNTH_SFX.chimes) return;
   const t = AC.currentTime, out = outNode(.6, 0, false);
   src(.1, 'lowpass', 170, 1, out, t, 1); src(.035, 'bandpass', 3000, .7, out, t, 2);
   tone(880, .12, .12, 'triangle'); setTimeout(() => tone(1320, .16, .1, 'triangle'), 70);
@@ -3534,7 +3615,7 @@ function panFor(p) {
 }
 // Grenade blast: a sharp crack, the mid-range blast, a deep pressure thump, a long rolling tail and falling debris
 function boom(pos, big = 1) {
-  if (bgMuted || !AC || !SYNTH_SFX.explosions) return;
+  if (bgMuted || !AC || (!SYNTH_SFX.explosions && !FX_BUF.explosion)) return;
   const dist = pos.distanceTo(camera.position)/big, far = 1/(1 + dist*.05), t = AC.currentTime + Math.min(.25, dist*big/343);
   const lpf = AC.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 450 + 10000*far;
   const out = AC.createGain(); out.gain.value = clamp(2.4/(1 + dist*.06), 0, 1.5);
@@ -3542,8 +3623,9 @@ function boom(pos, big = 1) {
   if (AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = panFor(pos); out.connect(p); node = p; }
   lpf.connect(out); node.connect(master); node.connect(verb);
   if (echoIn) { const e = AC.createGain(); e.gain.value = .75; node.connect(e); e.connect(echoIn); }
-  src(.05, 'highpass', 2600, 1.3*far, lpf, t);
-  src(.5, 'bandpass', 650, 2.4, lpf, t, .6);
+  const rec = FX_BUF.explosion;
+  if (rec) { fxPlay('explosion', 1.5, { rate: rand(.78, .9)/Math.sqrt(big), at: t, dest: lpf }); fxPlay('explosion', .9, { rate: rand(.5, .58), at: t + .012, dest: lpf }); }   // the crack, then the same blast an octave down for weight
+  else { src(.05, 'highpass', 2600, 1.3*far, lpf, t); src(.5, 'bandpass', 650, 2.4, lpf, t, .6); }
   src(1.6, 'lowpass', 240, 2.6, lpf, t + .01);
   const o = AC.createOscillator(), og = AC.createGain();
   o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(22, t + .6);
@@ -3681,9 +3763,17 @@ const SPARK_COL = new THREE.Color(5, 3.2, 1.4);
 const IMPACT_SFX = { metal: [['bandpass', 3200, .5, .05, 8], ['sine', 1900, .12, .09]], concrete: [['highpass', 2400, .45, .04]], wood: [['bandpass', 900, .55, .05, 3], ['sine', 260, .2, .05]],
   dirt: [['lowpass', 700, .5, .06]], flesh: [['lowpass', 500, .55, .05], ['sine', 120, .3, .05]] };
 let impactSndT = 0;
+const IMPACT_REC = { concrete: [1, .5], metal: [1.45, .55], wood: [.72, .55], dirt: [.6, .4], flesh: [.55, .35] };
 function impactSound(point, surface) {
-  if (bgMuted || !AC || !SYNTH_SFX.impacts || now - impactSndT < .03) return;
+  if (bgMuted || !AC || now - impactSndT < .03) return;
   const dist = point.distanceTo(camera.position); if (dist > 40) return;
+  if (FX_BUF.impact) {
+    impactSndT = now; const [r, v] = IMPACT_REC[surface] || IMPACT_REC.concrete, lp = AC.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 900 + 14000/(1 + dist*.15); lp.connect(outNode(Math.min(1, 2.2/(1 + dist*.3))*v, panFor(point), true));
+    fxPlay('impact', 1, { rate: r*rand(.88, 1.12), dest: lp });
+    return;
+  }
+  if (!SYNTH_SFX.impacts) return;
   impactSndT = now;
   const vol = Math.min(1, 3/(1 + dist*.35)), t = AC.currentTime, dest = outNode(vol*.5, 0, false);
   for (const [type, f, g, dur, q] of IMPACT_SFX[surface] || IMPACT_SFX.concrete) {
@@ -4142,35 +4232,89 @@ function hand(p, pos, left, watch) {
   }
   return h;
 }
+// ---- optics: sculpted housings (extruded rounded profiles and lathed tubes), coated glass, a lit reticle ----
+const OPT = {
+  body: new THREE.MeshStandardMaterial({ color: lin(0x1a1b1e), metalness: .5, roughness: .5, bumpMap: T(C.stipple, 3, 3, false), bumpScale: .0005, envMapIntensity: .95 }),
+  edge: new THREE.MeshStandardMaterial({ color: lin(0x2c2e33), metalness: .8, roughness: .32, envMapIntensity: 1.2 }),   // machined screws, knobs
+  rubber: new THREE.MeshStandardMaterial({ color: lin(0x0d0e0f), metalness: 0, roughness: .92 }),
+  glass: new THREE.MeshStandardMaterial({ color: lin(0xdfe9ee), transparent: true, opacity: .08, roughness: .02, metalness: .6, envMapIntensity: 1.2, depthWrite: false }),
+  coat: new THREE.MeshStandardMaterial({ color: lin(0x5a3a8a), transparent: true, opacity: .34, roughness: .04, metalness: 1, envMapIntensity: 2, depthWrite: false }),   // front lens coating
+};
+// reticles drawn once: a holographic 68 MOA ring with a 1 MOA dot, and a plain red dot (soft glow, made for bloom)
+const RETICLE = {};
+function reticleMat(kind) {
+  if (RETICLE[kind]) return RETICLE[kind];
+  const n = 256, cv = document.createElement('canvas'); cv.width = cv.height = n; const g = cv.getContext('2d'), c = n/2;
+  const glow = (r, a) => { const gr = g.createRadialGradient(c, c, 0, c, c, r); gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(c, c, r, 0, 7); g.fill(); };
+  if (kind === 'holo') {
+    g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 6; g.shadowColor = '#fff'; g.shadowBlur = 10;
+    g.beginPath(); g.arc(c, c, n*.36, 0, 7); g.stroke();
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { g.beginPath(); g.moveTo(c + dx*n*.33, c + dy*n*.33); g.lineTo(c + dx*n*.40, c + dy*n*.40); g.stroke(); }   // ring ticks
+    g.shadowBlur = 0; glow(16, 1); g.fillStyle = '#fff'; g.beginPath(); g.arc(c, c, 5, 0, 7); g.fill();
+  } else { glow(n*.5, .55); g.fillStyle = '#fff'; g.beginPath(); g.arc(c, c, n*.11, 0, 7); g.fill(); }
+  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+  return RETICLE[kind] = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(2.4, .14, .09), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+}
+function rrPath(P, w, h, r, cx = 0, cy = 0, top = w) {   // rounded rectangle (or trapezoid: narrower top) as a shape or hole
+  const x0 = cx - w/2, y0 = cy - h/2, t0 = cx - top/2;
+  P.moveTo(x0 + r, y0); P.lineTo(x0 + w - r, y0); P.quadraticCurveTo(x0 + w, y0, x0 + w - (w - top)/2*r/h, y0 + r);
+  P.lineTo(t0 + top - (w - top)/2*r/h*0, y0 + h - r); P.quadraticCurveTo(t0 + top, y0 + h, t0 + top - r, y0 + h);
+  P.lineTo(t0 + r, y0 + h); P.quadraticCurveTo(t0, y0 + h, t0, y0 + h - r);
+  P.lineTo(x0 + (w - top)/2*r/h, y0 + r); P.quadraticCurveTo(x0, y0, x0 + r, y0);
+  return P;
+}
+const _optGeo = new Map();
+function extZ(key, shape, depth, bevel = .0012) {   // extruded along z, centred on z = 0
+  if (_optGeo.has(key)) return _optGeo.get(key);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 8 });
+  geo.translate(0, 0, -depth/2); geo.computeVertexNormals(); _optGeo.set(key, geo); return geo;
+}
+function lathZ(key, prof, seg = 32) {   // a lathed tube along z from a [radius, z] profile
+  if (_optGeo.has(key)) return _optGeo.get(key);
+  const geo = new THREE.LatheGeometry(prof.map(([r, z]) => new THREE.Vector2(r, z)), seg); geo.rotateX(Math.PI/2); geo.computeVertexNormals(); _optGeo.set(key, geo); return geo;
+}
+function oMesh(p, geo, m, x, y, z) { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); p.add(o); return o; }
+function oDisc(p, r, m, x, y, z) { return oMesh(p, new THREE.CircleGeometry(r, 32), m, x, y, z); }
+// Aimpoint-style red dot: lathed tube with a flared sunshade, turrets, a riser mount with a throw lever; y: dot height, z: tube centre
 function redDot(p, y, z) {
-  const g = new THREE.Group(); p.add(g);
-  gB(g, .03, .012, .06, GM.gun, 0, y - .026, z);
-  gC(g, .021, .021, .05, GM.tube, 0, y, z, 'z', 20, true);
-  gC(g, .018, .018, .002, GM.glass, 0, y, z - .024);
-  const dot = new THREE.Mesh(new THREE.SphereGeometry(.0012, 6, 4), GM.dot); dot.position.set(0, y, z - .026); g.add(dot);
+  const g = new THREE.Group(); g.position.set(0, y, z); p.add(g);
+  const t = .002;   // wall thickness: the tube is open and you look through it
+  oMesh(g, lathZ('rdTube', [[.0205, -.034], [.0215, -.033], [.0215, -.024], [.019, -.021], [.019, .022], [.0205, .025], [.0205, .033], [.0205 - t, .033], [.0205 - t, .025], [.019 - t, .022], [.019 - t, -.021], [.0215 - t, -.024], [.0215 - t, -.033], [.0205, -.034]]), OPT.body, 0, 0, 0);
+  oMesh(g, lathZ('rdRing', [[.0218, -.008], [.0218, .008]], 32), OPT.rubber, 0, 0, .004);   // rubber armour band
+  gC(g, .0075, .0075, .009, OPT.edge, 0, .022, .004, 'y', 18); gC(g, .0075, .0075, .009, OPT.edge, .022, 0, .004, 'x', 18);   // turrets
+  gC(g, .0062, .0062, .012, OPT.body, -.021, -.004, .008, 'x', 18);   // battery cap
+  gB(g, .016, .012, .036, OPT.body, 0, -.024, .002);                  // riser
+  gB(g, .03, .008, .044, OPT.body, 0, -.032, .002);                   // rail clamp
+  gC(g, .004, .004, .012, OPT.edge, .019, -.031, .012, 'x', 12); gB(g, .004, .004, .022, OPT.edge, .025, -.031, .004);   // throw lever
+  oDisc(g, .0195, OPT.coat, 0, 0, -.026).rotation.y = Math.PI;        // coated objective (seen from the front)
+  oDisc(g, .017, OPT.glass, 0, 0, .021);
+  const dot = new THREE.Mesh(new THREE.PlaneGeometry(.009, .009), reticleMat('dot')); dot.position.set(0, 0, -.024); g.add(dot);
   return g;
 }
-// small reflex sight for pistols / shotgun / revolver; y is the height of the dot
+// small reflex sight for pistols / shotgun / revolver (RMR-style hood); y is the height of the dot
 function miniReflex(p, y, z) {
   const s = new THREE.Group(); s.position.set(0, y, z); p.add(s);
-  gB(s, .026, .008, .045, GM.gun, 0, -.017, 0);
-  gB(s, .004, .028, .03, GM.gun, -.013, -.003, -.004); gB(s, .004, .028, .03, GM.gun, .013, -.003, -.004);
-  gB(s, .03, .005, .03, GM.gun, 0, .012, -.004);
-  gB(s, .024, .022, .0015, GM.glass, 0, 0, -.017);
-  const dot = new THREE.Mesh(new THREE.SphereGeometry(.0011, 6, 4), GM.dot); dot.position.set(0, 0, -.018); s.add(dot);
+  const sh = rrPath(new THREE.Shape(), .03, .03, .006, 0, -.002, .022); sh.holes.push(rrPath(new THREE.Path(), .021, .018, .003, 0, .0005));
+  oMesh(s, extZ('rmrHood', sh, .008), OPT.body, 0, 0, -.012);
+  gB(s, .028, .009, .036, OPT.body, 0, -.0165, .002);                 // base
+  gB(s, .022, .006, .014, OPT.body, 0, -.01, .012);                    // emitter housing
+  gC(s, .0025, .0025, .03, OPT.edge, 0, -.0165, .006, 'x', 8);         // cross screw
+  oMesh(s, new THREE.PlaneGeometry(.021, .018), OPT.coat, 0, .0005, -.0125).rotation.y = Math.PI;
+  const dot = new THREE.Mesh(new THREE.PlaneGeometry(.008, .008), reticleMat('dot')); dot.position.set(0, 0, -.014); s.add(dot);
   return s;
 }
-// 3x combat scope: open tube you look down, with a lit red reticle; y is the optical axis
+// 3x combat scope: lathed body with an objective bell and eyepiece, turrets, a lit reticle; y is the optical axis
 function scope3x(p, y, z) {
   const s = new THREE.Group(); s.position.set(0, y, z); p.add(s);
-  gB(s, .03, .018, .08, GM.gun, 0, -.03, 0);
-  gC(s, .02, .02, .12, GM.tube, 0, 0, 0, 'z', 24, true);
-  gC(s, .027, .021, .036, GM.tube, 0, 0, -.074, 'z', 24, true);
-  gC(s, .024, .021, .03, GM.tube, 0, 0, .072, 'z', 24, true);
-  gC(s, .0205, .0205, .002, GM.glass, 0, 0, -.065, 'z', 24);
-  gC(s, .006, .006, .02, GM.gun, 0, .024, 0, 'y', 10); gC(s, .006, .006, .02, GM.gun, .024, 0, 0, 'x', 10);
-  const dot = new THREE.Mesh(new THREE.SphereGeometry(.0008, 6, 4), GM.dot); dot.position.set(0, 0, -.063); s.add(dot);
-  gB(s, .0005, .008, .0005, GM.dot, 0, -.0055, -.063);
+  const t = .0018;
+  oMesh(s, lathZ('sc3', [[.026, -.09], [.027, -.088], [.027, -.07], [.0205, -.052], [.0185, -.045], [.0185, .045], [.0215, .055], [.0225, .085], [.0225 - t, .085], [.0215 - t, .055], [.0185 - t, .045], [.0185 - t, -.045], [.0205 - t, -.052], [.027 - t, -.07], [.027 - t, -.088], [.026, -.09]]), OPT.body, 0, 0, 0);
+  oMesh(s, lathZ('sc3eye', [[.0235, .062], [.0235, .084]], 32), OPT.rubber, 0, 0, 0);   // rubber eyecup
+  gC(s, .0085, .0085, .012, OPT.edge, 0, .024, 0, 'y', 18); gC(s, .0085, .0085, .012, OPT.edge, .024, 0, 0, 'x', 18);
+  gB(s, .018, .014, .07, OPT.body, 0, -.024, 0); gB(s, .03, .008, .08, OPT.body, 0, -.033, 0);
+  oDisc(s, .025, OPT.coat, 0, 0, -.084).rotation.y = Math.PI;
+  oDisc(s, .0175, OPT.glass, 0, 0, .06);
+  const dot = new THREE.Mesh(new THREE.PlaneGeometry(.006, .006), reticleMat('dot')); dot.position.set(0, 0, -.06); s.add(dot);
+  gB(s, .0005, .008, .0005, GM.dot, 0, -.0055, -.06);   // post below the dot
   return s;
 }
 const LASER_AT = { mpistol: [0, -.022, -.105], pistol: [0, -.022, -.105], magnum: [0, -.02, -.16], smg: [.03, -.005, -.22], ar: [.036, -.002, -.4], lmg: [.032, .005, -.42], shotgun: [0, -.036, -.42], sniper: [.03, -.03, -.5], dmr: [.034, -.004, -.46] };
@@ -4243,13 +4387,21 @@ function loadRealGuns() {
   }
   return Promise.all(jobs);
 }
-// the stock holo sight (the M16A4's), as a function so a realistic receiver can carry it; y: dot height, z: frame centre
+// EOTech-style holographic sight: a hooded window on a long base, side buttons, transverse battery, 68 MOA ring
+// reticle on coated glass; y: dot height, z: window centre
 function holoSight(p, y, z) {
-  const hs = new THREE.Group(); p.add(hs);
-  gB(hs, .004, .042, .05, GM.gun, -.019, y - .004, z); gB(hs, .004, .042, .05, GM.gun, .019, y - .004, z);
-  gB(hs, .042, .006, .05, GM.gun, 0, y + .02, z);
-  gB(hs, .034, .034, .002, GM.glass, 0, y - .002, z - .025);
-  const dot = new THREE.Mesh(new THREE.SphereGeometry(.0013, 6, 4), GM.dot); dot.position.set(0, y, z - .027); hs.add(dot);
+  const hs = new THREE.Group(); hs.position.set(0, y, z); p.add(hs);
+  const hood = rrPath(new THREE.Shape(), .046, .041, .008, 0, .0015, .04); hood.holes.push(rrPath(new THREE.Path(), .034, .029, .004, 0, .001));
+  oMesh(hs, extZ('holoHood', hood, .036, .0016), OPT.body, 0, 0, 0);
+  oMesh(hs, extZ('holoBase', rrPath(new THREE.Shape(), .036, .014, .004, 0, 0), .078, .0014), OPT.body, 0, -.026, .016);
+  gB(hs, .026, .008, .056, OPT.body, 0, -.036, .018);                       // rail clamp
+  gC(hs, .0065, .0065, .012, OPT.edge, .021, -.035, .03, 'x', 16);          // clamp knob
+  gC(hs, .008, .008, .03, OPT.body, 0, -.026, -.024, 'x', 18);              // battery tube (front, across)
+  gC(hs, .0084, .0084, .006, OPT.edge, .016, -.026, -.024, 'x', 18);        // battery cap
+  for (const x of [-.008, .008]) gC(hs, .0034, .0034, .004, OPT.rubber, x, -.024, .056, 'z', 12);   // rear buttons
+  oMesh(hs, new THREE.PlaneGeometry(.034, .029), OPT.coat, 0, .001, -.0175).rotation.y = Math.PI;
+  oMesh(hs, new THREE.PlaneGeometry(.034, .029), OPT.glass, 0, .001, .0175);
+  const ret = new THREE.Mesh(new THREE.PlaneGeometry(.027, .027), reticleMat('holo')); ret.position.set(0, 0, -.016); hs.add(ret);
   return hs;
 }
 // swap the procedural body for the realistic model; returns false (keep the classic build) if it isn't available
@@ -4452,11 +4604,7 @@ function buildGun(model, withArms, skinId, att) {
     gC(g, .016, .014, .055, GM.gun, 0, .006, -.72, 'z', 16);
     for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; gB(g, .003, .01, .026, GM.poly, Math.sin(a) * .014, .006 + Math.cos(a) * .014, -.735); }
     gB(g, .036, .01, .08, GM.gun, 0, .04, -.08);     // flat top
-    { const hs = new THREE.Group(); g.add(hs); u.sight = hs;
-      gB(hs, .004, .042, .05, GM.gun, -.019, .064, -.085); gB(hs, .004, .042, .05, GM.gun, .019, .064, -.085);
-      gB(hs, .042, .006, .05, GM.gun, 0, .088, -.085);
-      gB(hs, .034, .034, .002, GM.glass, 0, .066, -.11);
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(.0013, 6, 4), GM.dot); dot.position.set(0, .068, -.112); hs.add(dot); }
+    u.sight = holoSight(g, .068, -.085);
     const mag = new THREE.Group(); g.add(mag); u.mag = mag;
     const am = new THREE.Group(); am.position.set(0, -.065, -.075); am.rotation.x = .12; mag.add(am); u.magInner = am;
     gB(am, .026, .175, .056, GM.poly, 0, -.088, 0);
@@ -4593,6 +4741,8 @@ function buildGun(model, withArms, skinId, att) {
     u.pumpHome = u.pump ? u.pump.position.clone() : null;
   }
   g.traverse(o => { if (o.isMesh) { o.castShadow = !withArms; o.receiveShadow = !withArms; } });
+  // a reticle only shows to the shooter: on anyone else's gun the lit dot would bloom into a smear across the screen
+  if (!withArms) g.traverse(o => { if (o.material === RETICLE.holo || o.material === RETICLE.dot) o.visible = false; });
   return g;
 }
 bootMark('effects+gun code');
@@ -4628,6 +4778,135 @@ for (let i = 0; i < 6; i++) {
   g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g); nadePool.push(g);
 }
 // the frag in your hand, with a gloved hand and sleeve
+// ---- first-person arms: the soldier's own sleeves and gloves (the body mesh cut down to the arms), on the same
+// skeleton, posed every frame by IK so the hands sit on the gun's grip and handguard. The procedural arms stay as the
+// fallback (and as the hand targets: reloads move those groups, and the real hands follow). ----
+const VMA = { b: null, key: '', fail: '' };
+const VMA_ARM = /(Left|Right)(Arm|ForeArm|Hand)/, VMA_EYE = [0, .085, .1];   // eye: above and in front of the head bone
+const VMA_SHOULDER = { R: [.21, -.25, .1], L: [-.17, -.2, -.16] };   // shoulder joints in camera space
+// hand poses in the gun's frame (x right, y up, -z forward): f = wrist → knuckles, n = out of the palm
+const VMA_POSE = {
+  R: { f: [-.2, .32, -.93], n: [-1, .08, -.12], curl: [1.2, 1.45, .8], thumb: [.35, .5, .35], back: .052, into: .024 },
+  L: { f: [.12, .42, -.9], n: [1, -.25, .1], curl: [1.05, 1.25, .7], thumb: [.1, .25, .2], back: .05, into: .03 },
+};
+// The body mesh moves each glove as one piece (every hand vertex is skinned to the hand bone). For the close-up arms
+// the glove is re-skinned: each vertex goes to the nearest finger segment, blended softly across the knuckles, so the
+// finger bones can wrap the hands round the grip.
+function vmaFingerSkin(o, g) {
+  const bones = o.skeleton.bones, at = bones.map((bn, i) => V().setFromMatrixPosition(new THREE.Matrix4().copy(o.skeleton.boneInverses[i]).invert()));
+  const id = n => bones.findIndex(bn => bn.name === 'mixamorig' + n);
+  const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, pos = g.attributes.position, gi = ['X', 'Y', 'Z', 'W'];
+  const used = new Uint8Array(pos.count); for (const v of g.index.array) used[v] = 1;
+  const _p = V(), _a = V(), _ab = V();
+  for (const side of ['Right', 'Left']) {
+    const hand = id(side + 'Hand'), fore = id(side + 'ForeArm'); if (hand < 0) continue;
+    const segs = [];   // [bone that moves the segment, start, end]
+    for (const fn of ['Index', 'Middle', 'Ring', 'Pinky', 'Thumb']) {
+      const c = [1, 2, 3, 4].map(j => id(`${side}Hand${fn}${j}`)); if (c.some(i => i < 0)) continue;
+      segs.push([hand, at[hand], at[c[0]]]);
+      for (let j = 0; j < 3; j++) segs.push([c[j], at[c[j]], at[c[j + 1]]]);
+    }
+    const W = new Map();
+    for (let v = 0; v < pos.count; v++) {
+      if (!used[v]) continue;
+      let wh = 0, wf = 0; for (let k = 0; k < 4; k++) { const bi = si['get' + gi[k]](v), w = sw['get' + gi[k]](v); if (bi === hand) wh += w; else if (bi === fore) wf += w; }
+      if (wh < .5) continue;
+      _p.fromBufferAttribute(pos, v); W.clear();
+      let dmin = 1e9;
+      const ds = segs.map(([bi, a, b]) => { _ab.subVectors(b, a); const t = clamp(_a.subVectors(_p, a).dot(_ab)/Math.max(1e-9, _ab.lengthSq()), 0, 1); const d = _a.copy(a).addScaledVector(_ab, t).distanceTo(_p); dmin = Math.min(dmin, d); return [bi, d]; });
+      for (const [bi, d] of ds) { const w = Math.exp(-(d - dmin)/.0045); if (w > .02) W.set(bi, Math.max(W.get(bi) || 0, w)); }
+      const top = [...W.entries()].sort((x, y) => y[1] - x[1]).slice(0, wf > 0 ? 3 : 4);
+      if (wf > 0) top.push([fore, wf*3]);   // keep the wrist's blend into the forearm
+      const sum = top.reduce((t, x) => t + x[1], 0);
+      for (let k = 0; k < 4; k++) { const e = top[k]; si['set' + gi[k]](v, e ? e[0] : 0); sw['set' + gi[k]](v, e ? e[1]/sum : 0); }
+    }
+  }
+  si.needsUpdate = sw.needsUpdate = true;
+}
+function vmArmsBuild() {
+  const opId = opOk(myOp) ? myOp : 'vanguard', key = opId + '|' + mySkin;
+  if (VMA.key === key) return VMA.b;
+  if (!OPS[opId] || !OPS[opId].scene) return null;   // still loading
+  VMA.key = key;
+  if (VMA.b) { vmScene.remove(VMA.b.group); for (const m of VMA.b.bodyMats || []) m.dispose(); VMA.b = null; }
+  try {
+    const b = { group: new THREE.Group() };
+    setOperator(b, opId, mySkin);
+    if (!b.model || !b.armR || !b.armL) throw new Error('no arm bones');
+    b.mixer = null;
+    b.model.traverse(o => {
+      if (o.isMesh && !o.isSkinnedMesh) { o.visible = false; return; }   // helmet, vest and other add-ons
+      if (!o.isSkinnedMesh) return;
+      const g = o.geometry.clone(), si = g.attributes.skinIndex, sw = g.attributes.skinWeight, arm = o.skeleton.bones.map(bn => VMA_ARM.test(bn.name));
+      const keepV = new Uint8Array(si.count);
+      const gi = ['getX', 'getY', 'getZ', 'getW'];
+      for (let v = 0; v < si.count; v++) { let w = 0; for (let k = 0; k < 4; k++) if (arm[si[gi[k]](v)]) w += sw[gi[k]](v); keepV[v] = w > .5; }
+      const idx = g.index.array, keep = [];
+      for (let t = 0; t < idx.length; t += 3) if (keepV[idx[t]] && keepV[idx[t+1]] && keepV[idx[t+2]]) keep.push(idx[t], idx[t+1], idx[t+2]);
+      g.setIndex(keep); vmaFingerSkin(o, g); o.geometry = g; o.frustumCulled = false; o.castShadow = o.receiveShadow = false;
+    });
+    // face down the camera (-z) with the eye at the origin, a little bigger than life like every shooter's arms
+    b.group.rotation.y = Math.PI; b.group.scale.setScalar(1.1); b.group.updateMatrixWorld(true);
+    const eye = b.headBone.getWorldPosition(V()).add(V(VMA_EYE[0], VMA_EYE[1], -VMA_EYE[2]));
+    b.group.position.sub(eye); b.group.updateMatrixWorld(true);
+    // the viewmodel gun sits further out than a real one: the support shoulder comes forward to reach the handguard,
+    // the firing shoulder sits back so that elbow can drop naturally (the torso isn't drawn, so the roots can move)
+    for (const [arm, at] of [[b.armR, VMA_SHOULDER.R], [b.armL, VMA_SHOULDER.L]]) {
+      arm.up.position.copy(arm.up.parent.worldToLocal(V(...at))); arm.up.updateMatrixWorld(true);
+      arm.l1 = arm.up.getWorldPosition(V()).distanceTo(arm.fore.getWorldPosition(V())); arm.l2 = arm.fore.getWorldPosition(V()).distanceTo(arm.hand.getWorldPosition(V()));
+    }
+    // bind-pose hand frames and finger curl axes (T-pose: palms face down)
+    for (const side of ['Right', 'Left']) {
+      const arm = side === 'Right' ? b.armR : b.armL, hq = arm.hand.getWorldQuaternion(new THREE.Quaternion()), inv = hq.clone().invert();
+      const mid = b.model.getObjectByName(`mixamorig${side}HandMiddle1`);
+      const f = mid.getWorldPosition(V()).sub(arm.hand.getWorldPosition(V())).normalize(), nW = V(0, -1, 0);
+      arm.fB = f.clone().applyQuaternion(inv); arm.nB = nW.clone().sub(f.clone().multiplyScalar(nW.dot(f))).normalize().applyQuaternion(inv);
+      arm.reachB = mid.position.length();
+      const P = VMA_POSE[side[0]];
+      for (const fn of ['Index', 'Middle', 'Ring', 'Pinky', 'Thumb']) for (let j = 1; j <= 3; j++) {
+        const bn = b.model.getObjectByName(`mixamorig${side}Hand${fn}${j}`), ch = b.model.getObjectByName(`mixamorig${side}Hand${fn}${j + 1}`); if (!bn || !ch) continue;
+        const d = ch.getWorldPosition(V()).sub(bn.getWorldPosition(V())).normalize();
+        const k = d.clone().cross(nW).normalize().applyQuaternion(bn.getWorldQuaternion(new THREE.Quaternion()).invert());
+        const ang = fn === 'Thumb' ? P.thumb[j - 1] : P.curl[j - 1]*(fn === 'Index' ? .9 : fn === 'Pinky' ? 1.08 : 1);
+        bn.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(k, ang));
+      }
+    }
+    b.group.visible = false; vmScene.add(b.group); VMA.b = b;
+  } catch (e) { console.warn('first-person arms', e); VMA.fail = String(e); VMA.b = null; }
+  return VMA.b;
+}
+const _vaQ = new THREE.Quaternion(), _vaQ2 = new THREE.Quaternion(), _vaM = new THREE.Matrix4(), _vaM2 = new THREE.Matrix4(), _vaT = V(), _vaP = V(), _vaF = V(), _vaN = V(), _vaX = V();
+// orientation that turns the bind frame (fB, nB) onto world directions (f, n)
+function vmaFrame(arm, f, n, out) {
+  _vaX.crossVectors(arm.fB, arm.nB); _vaM2.makeBasis(arm.fB, arm.nB, _vaX);
+  const n2 = n.clone().sub(f.clone().multiplyScalar(n.dot(f))).normalize();
+  _vaX.crossVectors(f, n2); _vaM.makeBasis(f, n2, _vaX);
+  return out.setFromRotationMatrix(_vaM.multiply(_vaM2.transpose()));
+}
+function vmaHand(arm, gunQ, target, P, pole) {
+  // the hand's world orientation from the pose, then the wrist so the palm wraps the grip
+  _vaF.set(...P.f).normalize().applyQuaternion(gunQ); _vaN.set(...P.n).normalize().applyQuaternion(gunQ);
+  const Q = vmaFrame(arm, _vaF, _vaN, new THREE.Quaternion());
+  _vaT.copy(target).addScaledVector(_vaN, -P.into).addScaledVector(_vaF, -P.back);
+  solveArm(arm, _vaT, pole);
+  // twist the forearm so the wrist only bends (no candy-wrapper wrist), then set the hand
+  arm.fore.getWorldQuaternion(_vaQ); const ql = _vaQ.clone().invert().multiply(Q);
+  const ax = arm.a2, d = ql.x*ax.x + ql.y*ax.y + ql.z*ax.z, tw = new THREE.Quaternion(ax.x*d, ax.y*d, ax.z*d, ql.w).normalize();
+  arm.fore.quaternion.multiply(tw); arm.fore.updateMatrixWorld(true);
+  arm.fore.getWorldQuaternion(_vaQ2); arm.hand.quaternion.copy(_vaQ2.invert().multiply(Q)); arm.hand.updateMatrixWorld(true);
+}
+function vmArmsUpdate(g, u) {
+  const b = (S.realArms !== false) && vmArmsBuild();
+  const on = !!b && vmRoot.visible && g.visible;
+  if (b) b.group.visible = on;
+  for (const a of [u.rArm, u.lArm]) if (a) for (const c of a.children) c.visible = !on;
+  if (!on) return;
+  vmRoot.updateMatrixWorld(true); g.updateMatrixWorld(true); b.group.updateMatrixWorld(true);
+  g.matrixWorld.decompose(_vaP, _vaQ, _vaX); const gq = _vaQ.clone();
+  const sh = b.armR.up.getWorldPosition(V()), shL = b.armL.up.getWorldPosition(V());
+  vmaHand(b.armR, gq, u.rArm.localToWorld(u.grip.clone()), VMA_POSE.R, sh.add(V(.5, -.75, .15)));
+  vmaHand(b.armL, gq, u.lArm.localToWorld(u.fore.clone()), VMA_POSE.L, shL.add(V(-.25, -.9, .1)));
+}
 const vmNade = new THREE.Group(); vmNade.visible = false; vmScene.add(vmNade);
 const vmFrag = fragMesh(fragMats(), true); vmFrag.position.set(0, .012, -.012); vmFrag.rotation.set(.35, .3, -.25); vmNade.add(vmFrag);
 { const h = hand(vmNade, V(.004, -.062, .02), false); h.rotation.x = -.6; h.scale.setScalar(.85); }   // palm cupped under the grenade
@@ -8051,6 +8330,7 @@ function updateView(dt) {
   // tactical sprint: gun held up toward the sky
   if (tacK > .01) { vmRoot.rotation.x += tacK*1.0; vmRoot.rotation.y -= tacK*.55; vmRoot.rotation.z -= tacK*.2; vmRoot.position.y += tacK*.05; vmRoot.position.z += tacK*.04; }
   vmRoot.visible = player.alive && !scoped && !acogView && nk < .97;
+  vmArmsUpdate(g, u);
   flashT -= dt; const on = flashT > 0;
   u.flash.visible = on; if (on) { u.flash.material.rotation = Math.random()*6.28; u.flash.scale.setScalar(u.flashSize * rand(.8, 1.2)); }
   if (u.petals) { u.petals.visible = on; if (on) { u.petals.rotation.z = Math.random()*6.28; u.petals.scale.setScalar(rand(.75, 1.25)); } }
@@ -8553,7 +8833,9 @@ $('play').onclick = e => {
     later(.4, () => say(MODES[MODE].name + '. Go!', true));
   }
   if (TOUCHPAD.on) { cursorX = cursorY = -1; clearTimeout(lockTimer); freeMouse = true; beginPlay(); return; }   // touch: no pointer lock
-  cursorX = e.clientX; cursorY = e.clientY;
+  // edge-turning (free-mouse mode) starts only once the mouse actually moves: the PLAY button sits near the
+  // screen edge, and a click there must not send the view spinning before the player touches the mouse
+  cursorX = cursorY = -1;
   requestLock();
   clearTimeout(lockTimer);
   lockTimer = setTimeout(useFreeMouse, 700);
@@ -9318,9 +9600,9 @@ function applyPixelRatio() {
 const PR1 = Math.min(1, MAX_PR), PR_MID = Math.max(PR1, Math.min(MAX_PR, 1.5));
 const PRESETS = (() => {
   const all = [
-    { name: 'Cinematic', post: true, pr: MAX_PR, rays: 1, bloom: true, motion: true, shadow: 4096, every: 1, grass: 1 },
-    { name: 'Cinematic', post: true, pr: PR_MID, rays: 1, bloom: true, motion: true, shadow: 4096, every: 1, grass: 1 },
-    { name: 'Cinematic lite', post: true, pr: PR_MID, rays: .6, bloom: true, motion: false, shadow: 4096, every: 2, grass: .9 },
+    { name: 'Cinematic', post: true, pr: MAX_PR, rays: 1, bloom: true, motion: true, ao: true, shadow: 4096, every: 1, grass: 1 },
+    { name: 'Cinematic', post: true, pr: PR_MID, rays: 1, bloom: true, motion: true, ao: true, shadow: 4096, every: 1, grass: 1 },
+    { name: 'Cinematic lite', post: true, pr: PR_MID, rays: .6, bloom: true, motion: false, ao: true, shadow: 4096, every: 2, grass: .9 },
     { name: 'Sharp', post: false, pr: MAX_PR, shadow: 4096, every: 1, grass: 1, pcf: true },
     { name: 'Sharp', post: false, pr: PR_MID, shadow: 2048, every: 1, grass: 1, pcf: true },
     { name: 'Cinematic lite', post: true, pr: PR1, rays: 0, bloom: true, motion: false, shadow: 2048, every: 2, grass: .75 },
@@ -9358,6 +9640,7 @@ function applyPreset(i) {
   motionBlur = !!P.motion && EXTREME;
   if (raysPass) { raysPass.rays = P.post && P.rays > 0; raysPass.blur.uniforms.rayCount.value = Math.max(8, Math.round(48 * (P.rays || 0))); raysPass.sunVis = 0; }
   if (bloomPass) { bloomPass.enabled = P.post && P.bloom; finalPass.uniforms.bloomK.value = bloomPass.enabled ? 1 : 0; }
+  if (aoPass) aoPass.on = !!(P.post && P.ao) && S.ao !== false;
   if (finalPass) finalPass.uniforms.sharp.value = P.pr >= 1.4 ? 0 : EXTREME ? .2 : .15;
   if (sun.shadow.mapSize.x !== P.shadow) { sun.shadow.mapSize.set(P.shadow, P.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   FX_LEVEL = P.post ? 2 : P.name === 'Fastest' || P.name === 'Mobile' ? 0 : 1;
@@ -9450,7 +9733,7 @@ async function benchmark() {
   if (targetFps >= 90 && pickHalf >= 0) { frameCap = targetFps / 2; return pickHalf; }
   return PRESETS.length - 1;
 }
-const benchKey = () => `boomBench|v5|${MAP_ID}|${innerWidth}x${innerHeight}@${devicePixelRatio}|${targetFps}`;
+const benchKey = () => `boomBench|v6|${MAP_ID}|${innerWidth}x${innerHeight}@${devicePixelRatio}|${targetFps}`;
 function saveBench(p) { store.set(benchKey(), JSON.stringify({ preset: p, cap: frameCap })); }
 const perf = { t: 0, frames: 0, worst: 0, slow: 0, good: 0, probation: 0, blockUntil: 0, floor: 0 };
 // the next cheaper (dir 1) or richer (dir -1) preset with the same post-processing setting; only when there's
