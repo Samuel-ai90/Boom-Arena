@@ -9,7 +9,7 @@
     "test": "node tests/run.js",
     "check": "node --check server.js && node --check game.js && node --check shared.js",
     "desktop": "electron .",
-    "dist:win": "node desktop/set-online.js && electron-builder --win nsis --x64 --publish never",
+    "dist:win": "node desktop/set-online.js && desktop/build-win.sh",
     "import-operator": "node tools/import-operator.js",
     "dist:mac": "node desktop/set-online.js && desktop/build-mac.sh"
   },
@@ -46,14 +46,18 @@
       "!package-lock.json",
       "!dist/**",
       "!.github/**",
-      "!start-server.bat"
+      "!desktop/build-*.sh",
+      "!desktop/win-after-pack.js",
+      "!desktop/*.icns",
+      "!desktop/*.ico",
+      "!*.md"
     ],
     "asar": true,
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "icons/icon-512.png",
+      "icon": "desktop/icon.ico",
       "signAndEditExecutable": false
     },
     "nsis": {

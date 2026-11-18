@@ -1,6 +1,6 @@
 # Boom Arena
 
-A fast first-person shooter for Mac: bot matches, killstreaks, Gun Game, Mini Warzone and Battle Royale.
+A fast first-person shooter for Mac and Windows: bot matches, killstreaks, Gun Game, Mini Warzone and Battle Royale.
 
 ## ⬇ Download (Mac)
 
@@ -9,6 +9,14 @@ A fast first-person shooter for Mac: bot matches, killstreaks, Gun Game, Mini Wa
 1. Open `BoomArena-mac.dmg` and drag **Boom Arena** into **Applications**.
 2. Open Boom Arena from Applications or Launchpad. It runs full screen in its own window, no browser and no internet needed.
 3. The first time, macOS may say it can't verify the app (it isn't signed with a paid Apple developer account). Go to **System Settings › Privacy & Security**, scroll down and click **Open Anyway**. You only do this once.
+
+## ⬇ Download (Windows)
+
+**[Download Boom Arena for Windows](https://github.com/Samuel-ai90/Boom-Arena/releases/latest/download/BoomArena-windows.zip)** (64-bit Windows 10 or 11)
+
+1. Right-click `BoomArena-windows.zip` → **Extract All…**, and put the **Boom Arena** folder anywhere you like (Documents, Desktop…).
+2. Open the folder and double-click **Boom Arena.exe**. Right-click it → **Show more options** → **Send to** → **Desktop (create shortcut)** for a desktop icon.
+3. The first time, Windows SmartScreen may say it "protected your PC" (the app isn't signed with a paid certificate). Click **More info** → **Run anyway**. You only do this once.
 
 All releases: https://github.com/Samuel-ai90/Boom-Arena/releases
 
@@ -35,7 +43,7 @@ The game tests your computer the first time it loads and picks the best look tha
 
 ## Building the app
 
-`desktop/build-mac.sh` builds `dist/Boom Arena.app` and `dist/BoomArena-mac.dmg` from this folder (it needs Electron 33: `npm install electron@33.4.11` in any folder, then point `ELECTRON_APP` at its `node_modules/electron/dist/Electron.app`). `--install` also copies the app to Applications.
+`desktop/build-mac.sh` builds `dist/Boom Arena.app` and `dist/BoomArena-mac.dmg` from this folder (it needs Electron 33: `npm install electron@33.4.11` in any folder, then point `ELECTRON_APP` at its `node_modules/electron/dist/Electron.app`). `--install` also copies the app to Applications. `desktop/build-win.sh` builds `dist/BoomArena-windows.zip` on a Mac (with electron-builder and resedit; see the script).
 
 ## Online match server
 
