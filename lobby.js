@@ -1,45 +1,29 @@
-// Boom Arena lobby: the single front screen, hub style. Your squad of four stands in a sunset port arena (staged art of
-// the two operators, RANGER and VIPER; the live 3D models with ?lobby3d). Around them: top tabs (PLAY, LOADOUT,
-// OPERATORS, BATTLE PASS, STORE), the mode / map banner, today's challenges, the PLAY button, your squad, match settings,
-// shortcut cards and squad chat. The other tabs are full screens built on the game's own loadout / operator / settings
-// controls (moved in by id, so the game keeps driving them) plus the free season pass and the cosmetic armory.
+// Boom Arena lobby: the single front screen, hub style. Your squad stands in the map you're about to play, drawn by
+// the game's own renderer (the real operator models, their guns, the map's light). Around them: top tabs (PLAY, LOADOUT,
+// OPERATORS, BATTLE PASS, STORE), the mode / map banner, today's challenges, the PLAY button, your squad and the match
+// settings. The other tabs are full screens built on the game's own loadout / operator / settings controls (moved in
+// by id, so the game keeps driving them) plus the free season pass and the cosmetic armory.
 // Offline matches start from here (online keeps its own flow); Escape in a match comes back here, paused.
-// Uses the game's globals (MODES, MAP_INFO, S, OPS, daily, weekly, BoomRewards, ...).
+// Uses the game's globals (MODES, MAP_INFO, S, OPS, daily, weekly, BoomRewards, scene, camera, renderFrame, ...).
 (function () {
   const $ = id => document.getElementById(id);
   const BUILD = (window.BOOM_BUILD && !/^__/.test(window.BOOM_BUILD)) ? window.BOOM_BUILD : 'dev';
   const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
   const U = n => `calc(var(--u)*${n})`;
 
-  // ---------------- art, squad, icons ----------------
-  // staged operator art: aspect (w/h) and where the head sits across the cutout (for the name plates)
-  const ART = {
-    ranger: { src: 'lobby/op-ranger.webp', face: 'lobby/op-ranger-face.webp', ar: .381, hx: .517 },
-    viper: { src: 'lobby/op-viper.webp', face: 'lobby/op-viper-face.webp', ar: .36, hx: .532 },
-    rangerFrost: { src: 'lobby/op-ranger-frost.webp', face: 'lobby/op-ranger-frost-face.webp', ar: .421, hx: .419 },
-    viperWood: { src: 'lobby/op-viper-wood.webp', face: 'lobby/op-viper-wood-face.webp', ar: .583, hx: .493 },
-  };
-  // where each squad member stands on screen: feet x / y and height, as fractions of the viewport
-  const SLOTS_WIDE = [{ x: .475, y: .80, h: .56 }, { x: .335, y: .735, h: .45 }, { x: .595, y: .725, h: .44 }, { x: .69, y: .705, h: .33 }];
-  // short screens (phones in landscape): the squad panel is hidden, so the squad stands lower and a bit wider
-  const SLOTS_SHORT = [{ x: .5, y: .86, h: .6 }, { x: .375, y: .8, h: .48 }, { x: .625, y: .79, h: .47 }, { x: .73, y: .77, h: .36 }];
-  const isShort = () => innerHeight <= 600;
-  let SLOTS = isShort() ? SLOTS_SHORT : SLOTS_WIDE;
+  // ---------------- squad, icons ----------------
   const SLOT_COL = ['#ef8a2c', '#9fb2c0', '#c4ad88', '#93aa86'];
-  const opArt = op => op === 'axiom' ? 'viper' : 'ranger';
-  const heroArt = () => opArt(typeof myOp !== 'undefined' ? myOp : 'vanguard');
   const opName = () => (typeof OPS !== 'undefined' && OPS[myOp] ? OPS[myOp].name : 'RANGER');
   const has3D = () => typeof OPS !== 'undefined' && !!(OPS.vanguard && OPS.vanguard.scene);
+  // the three bots that stand with you (team modes put bots like these on your side)
   function mates() {
-    const viperHero = heroArt() === 'viper';
+    const viper = typeof myOp !== 'undefined' && myOp === 'axiom';
     return [
-      { name: 'VOLT', op: 'vanguard', skin: 'w_frost', gun: 'lmg', art: 'rangerFrost', face: -.15 },
-      { name: 'SERAPH', op: viperHero ? 'vanguard' : 'axiom', skin: viperHero ? 'w_urban' : 'a_stealth', gun: 'smg', art: viperHero ? 'ranger' : 'viper', face: .2 },
-      { name: 'TIDE', op: 'axiom', skin: 'woodland', gun: 'dmr', art: 'viperWood', face: .35 },
+      { name: 'VOLT', op: 'vanguard', skin: 'olive', gun: 'lmg' },
+      { name: 'SERAPH', op: viper ? 'vanguard' : 'axiom', skin: 'standard', gun: 'smg' },
+      { name: 'TIDE', op: 'vanguard', skin: 'desert', gun: 'dmr' },
     ];
   }
-  const dayHash = s => [...(s + new Date().toDateString())].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
-  const mateLv = name => 20 + dayHash(name) % 80;
 
   const I = {
     gear: '<path d="M12 2.6l1.7 2.2 2.7-.7.5 2.8 2.6.9-.9 2.6 1.9 2.1-2.2 1.7.7 2.7-2.8.5-.9 2.6-2.6-.9-2.1 1.9-1.7-2.2-2.7.7-.5-2.8-2.6-.9.9-2.6L2.6 12l2.2-1.7-.7-2.7 2.8-.5.9-2.6 2.6.9z"/><circle cx="12" cy="12" r="3.3"/>',
@@ -97,25 +81,12 @@
   #lobby .ic{width:1em;height:1em;flex:none;display:block}
   #lobby button{font-family:inherit;color:inherit;filter:none;letter-spacing:inherit}
   #lobby button:disabled{cursor:default}
-  #lobby .lb-bg{position:absolute;inset:0;background:#0d0c0c url(lobby/arena-bg.jpg) center 42%/cover no-repeat;filter:saturate(.68) contrast(1.06) brightness(.74);animation:lbDrift 60s ease-in-out infinite alternate;transform-origin:50% 60%}
-  @keyframes lbDrift{from{transform:scale(1.035) translateX(-.4%)}to{transform:scale(1.0) translateX(.4%)}}
-  @media (max-aspect-ratio:16/10){#lobby .lb-bg{background-position:96% 42%}}
+  #lobby.live{background:none}
+  #lobby .lb-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,#1b1c1d,#0b0c0d 70%)}
+  #lobby.live .lb-bg{display:none}
   #lobby .lb-vig{position:absolute;inset:0;pointer-events:none;background:
-    linear-gradient(90deg,rgba(8,9,10,.86) 0%,rgba(8,9,10,.45) 24%,rgba(8,9,10,.05) 40%,rgba(8,9,10,.05) 64%,rgba(8,9,10,.45) 79%,rgba(8,9,10,.84) 100%),
-    linear-gradient(180deg,rgba(8,9,10,.6) 0%,transparent 17%,transparent 66%,rgba(8,9,10,.85) 100%)}
-  #lbCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
-  #lobby .lb-stage{position:absolute;inset:0;pointer-events:none;z-index:0}
-  #lobby .lb-fig{position:absolute;transform:translate(-50%,-97%) scale(.97);transform-origin:50% 100%;opacity:0;transition:opacity .6s,transform .6s cubic-bezier(.2,.8,.2,1)}
-  #lobby .lb-fig.in{opacity:1;transform:translate(-50%,-100%)}
-  #lobby .lb-fig .body{height:100%;width:auto;display:block;position:relative;z-index:1;transform-origin:50% 100%;animation:lbBreathe 4.2s ease-in-out infinite;
-    filter:drop-shadow(0 0 ${U(1)} rgba(255,196,150,.2)) brightness(.93) contrast(1.05) saturate(.86)}
-  #lobby .lb-fig .wash{position:absolute;inset:0;z-index:2;pointer-events:none;mix-blend-mode:soft-light;background:linear-gradient(105deg,rgba(255,170,110,.5),rgba(255,150,90,0) 45%,rgba(40,60,90,.35) 100%);
-    -webkit-mask:var(--img) center/100% 100% no-repeat;mask:var(--img) center/100% 100% no-repeat;animation:lbBreathe 4.2s ease-in-out infinite;transform-origin:50% 100%}
-  #lobby .lb-fig .refl{position:absolute;left:0;top:100%;height:100%;width:auto;transform:scaleY(-1);transform-origin:50% 0;opacity:.13;filter:blur(${U(2)}) brightness(.6) saturate(.7);
-    -webkit-mask-image:linear-gradient(to top,rgba(0,0,0,.9),transparent 26%);mask-image:linear-gradient(to top,rgba(0,0,0,.9),transparent 26%)}
-  #lobby .lb-fig::after{content:'';position:absolute;left:6%;right:6%;bottom:-3%;height:7%;z-index:0;background:radial-gradient(closest-side,rgba(0,0,0,.72),transparent);filter:blur(${U(3)})}
-  #lobby .lb-fig.hero .body{animation-duration:4.8s}
-  @keyframes lbBreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.004,1.008)}}
+    linear-gradient(90deg,rgba(8,9,10,.8) 0%,rgba(8,9,10,.38) 22%,rgba(8,9,10,0) 38%,rgba(8,9,10,0) 68%,rgba(8,9,10,.36) 81%,rgba(8,9,10,.78) 100%),
+    linear-gradient(180deg,rgba(8,9,10,.5) 0%,transparent 15%,transparent 74%,rgba(8,9,10,.6) 100%)}
 
   #lobby .lb-ui{position:absolute;inset:0;pointer-events:none}
   #lobby .lb-ui > *{pointer-events:auto}
@@ -153,7 +124,7 @@
   #lobby .lb-map{margin-top:${U(16)};width:${U(290)};height:${U(68)};display:flex;align-items:stretch;border-radius:var(--r);overflow:hidden;cursor:pointer;border:1px solid var(--ln);background:var(--p);
     box-shadow:0 0 0 1px rgba(0,0,0,.45);transition:border-color .15s,background .15s;animation:lbIn .5s both .1s;text-align:left;padding:0}
   #lobby .lb-map:hover{border-color:rgba(255,255,255,.22);background:rgba(22,23,24,.85)}
-  #lobby .lb-map .th{width:${U(108)};flex:none;background:url(lobby/arena-bg.jpg) 70% 62%/400% auto no-repeat;position:relative;filter:saturate(.7) brightness(.85)}
+  #lobby .lb-map .th{width:${U(108)};flex:none;background:#1a1b1c center/cover no-repeat;position:relative}
   #lobby .lb-map .tx{display:flex;align-items:center;gap:${U(10)};padding:0 ${U(14)}}
   #lobby .lb-map .tx .ic{font-size:${U(20)};color:var(--acc)}
   #lobby .lb-map b{display:block;font-size:${U(22)};font-weight:800;text-transform:uppercase;letter-spacing:.04em;line-height:1}
@@ -202,7 +173,9 @@
   #lobby .lb-inv{display:none;align-items:center;gap:${U(5)};background:var(--accd);border:1px solid rgba(239,138,44,.55);color:var(--tx);border-radius:var(--r);cursor:pointer;font-size:${U(12)};font-weight:800;letter-spacing:.1em;padding:${U(3)} ${U(9)}}
   #lobby .lb-inv:hover{background:rgba(239,138,44,.32)}
   #lobby.online .lb-inv{display:flex}
-  #lobby.online .lb-fill:not(.lb-net) .sqf,#lobby.online #lbFill{display:none}
+  #lobby .lb-st{display:none} #lobby.online .lb-st,#lobby.paused .lb-st{display:flex}
+  #lobby .lb-st .pz{display:none;flex:1;color:var(--mut)} #lobby.paused:not(.online) .lb-st .pz{display:block}
+  #lobby .lb-st .lb-leave{margin-left:auto}
   #lobby .lb-fill .onl{display:none;flex:1;font-size:${U(13)};font-weight:700;letter-spacing:.08em;color:var(--mut)}
   #lobby.online .lb-fill .onl{display:block}
   #lobby.netin .lb-leave{display:block}
@@ -227,14 +200,6 @@
   #lobby .lb-play .pt{position:absolute;left:${U(34)};top:${U(8)};display:flex;align-items:center;gap:${U(16)};font-size:${U(84)};font-weight:900;font-style:italic;line-height:1;letter-spacing:.01em}
   #lobby .lb-play .pt .ic{font-size:${U(46)}}
   #lobby .lb-play small{position:absolute;left:${U(40)};right:${U(30)};bottom:${U(15)};font-size:${U(16)};font-weight:800;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(18,17,16,.82)}
-  #lobby .lb-chat{position:relative;display:flex;align-items:center;gap:${U(10)};margin-top:${U(12)};width:${U(320)};padding:${U(7)} ${U(12)};background:var(--p);border:1px solid var(--ln);border-radius:var(--r);
-    box-shadow:0 0 0 1px rgba(0,0,0,.45);font-size:${U(18)};color:var(--mut);animation:lbIn .5s both .32s}
-  #lobby .lb-chat input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--tx);font:inherit;font-size:${U(15)};font-weight:600;letter-spacing:.03em}
-  #lobby .lb-chat input::placeholder{color:var(--mut)}
-  #lobby .lb-chat:focus-within{border-color:rgba(255,255,255,.25)}
-  #lobby .lb-chatlog{position:absolute;left:0;bottom:calc(100% + ${U(8)});width:${U(400)};display:flex;flex-direction:column;gap:${U(3)};pointer-events:none}
-  #lobby .lb-chatlog div{font-size:${U(15)};font-weight:600;color:var(--tx);text-shadow:0 1px 2px #000;background:linear-gradient(90deg,rgba(0,0,0,.6),transparent);padding:${U(2)} ${U(8)};transition:opacity .6s}
-  #lobby .lb-chatlog b{margin-right:${U(6)}}
 
   #lobby .lb-right{position:absolute;right:${U(24)};top:${U(82)};width:${U(340)};display:flex;flex-direction:column;gap:${U(16)}}
   #lobby .lb-squad{animation:lbIn .5s both .1s}
@@ -247,7 +212,7 @@
   #lobby .lb-sq .nm b .ic{color:var(--acc);font-size:${U(15)}}
   #lobby .lb-sq .nm small{display:flex;align-items:center;gap:${U(6)};font-size:${U(13)};font-weight:600;letter-spacing:.04em;color:var(--ok)}
   #lobby .lb-sq .nm small i{width:${U(6)};height:${U(6)};border-radius:50%;background:currentColor}
-  #lobby .lb-sq .hs{font-size:${U(17)};color:var(--dim)}
+  #lobby .lb-sq .av{display:flex;align-items:center;justify-content:center;font-size:${U(20)};color:var(--dim)}
   #lobby .lb-sq.wait .nm small{color:var(--mut)} #lobby .lb-sq.wait .nm small i{animation:lbpulse 1s infinite}
   #lobby .lb-sq.open{opacity:.55} #lobby .lb-sq.open .av{display:flex;align-items:center;justify-content:center;font-size:${U(20)};color:var(--mut);background:rgba(255,255,255,.03)}
   #lobby .lb-sets{animation:lbIn .5s both .16s}
@@ -261,30 +226,12 @@
   #lobby .lb-row:hover .ic{color:var(--tx2)}
   #lobby .lb-row.locked{cursor:default} #lobby .lb-row.locked:hover{background:none} #lobby .lb-row.locked b{color:var(--mut)}
 
-  #lobby .lb-dock{position:absolute;left:${U(452)};right:${U(392)};bottom:${U(26)};display:flex;justify-content:center;gap:${U(10)};pointer-events:none}
-  #lobby .lb-dk{pointer-events:auto;position:relative;width:${U(162)};height:${U(112)};padding:0;border-radius:var(--r);overflow:hidden;cursor:pointer;border:1px solid var(--ln);
-    background:rgba(13,14,15,.86);box-shadow:0 0 0 1px rgba(0,0,0,.5),0 ${U(8)} ${U(20)} rgba(0,0,0,.35);transition:transform .15s,border-color .15s,background .15s;animation:lbIn .5s both var(--d)}
-  #lobby .lb-dk::after{content:'';position:absolute;left:0;right:0;bottom:0;height:${U(2)};background:var(--acc);transform:scaleX(0);transition:transform .2s}
-  #lobby .lb-dk:hover{transform:translateY(${U(-3)});border-color:rgba(255,255,255,.2);background:rgba(20,21,22,.92)}
-  #lobby .lb-dk:hover::after{transform:none}
-  #lobby .lb-dk .art{position:absolute;left:0;right:0;top:0;bottom:${U(34)};display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 100%,rgba(255,255,255,.05),transparent 70%)}
-  #lobby .lb-dk .art img{max-width:90%;max-height:90%;object-fit:contain;filter:saturate(.82) brightness(.95) drop-shadow(0 ${U(4)} ${U(6)} rgba(0,0,0,.6))}
-  #lobby .lb-dk .art img.op{max-width:none;max-height:none;width:100%;height:auto;align-self:flex-start;margin-top:${U(-4)};transform:scale(1.9);transform-origin:50% 8%}
-  #lobby .lb-dk .art svg{width:72%;height:82%}
-  #lobby .lb-dk .cap{position:absolute;left:${U(8)};top:${U(6)};z-index:1;font-size:${U(12)};font-weight:700;letter-spacing:.1em;color:var(--tx2);text-shadow:0 1px 2px #000;text-transform:uppercase}
-  #lobby .lb-dk .lab{position:absolute;left:0;right:0;bottom:0;height:${U(34)};display:flex;align-items:center;justify-content:center;gap:${U(7)};font-size:${U(15)};font-weight:700;letter-spacing:.12em;
-    background:rgba(0,0,0,.35);border-top:1px solid var(--ln);color:var(--tx2)}
-  #lobby .lb-dk:hover .lab{color:var(--tx)}
-  #lobby .lb-dk .lab .ic{font-size:${U(16)}}
-  #lobby .lb-dk .tier{position:absolute;left:0;right:0;bottom:${U(34)};text-align:center;font-size:${U(13)};font-weight:700;letter-spacing:.08em;color:var(--mut)}
-  #lobby .lb-dk .tbar{position:absolute;left:${U(12)};right:${U(12)};bottom:${U(6)};height:${U(3)};background:rgba(255,255,255,.12);overflow:hidden}
-  #lobby .lb-dk .tbar i{display:block;height:100%;background:var(--acc)}
-  #lobby .lb-dk.pass .lab{bottom:${U(10)};background:none;border:0;height:${U(26)}} #lobby .lb-dk.pass .art{bottom:${U(52)}}
-  #lobby .lb-brand{position:absolute;right:${U(30)};bottom:${U(30)};text-align:right;font-weight:900;font-style:italic;font-size:${U(34)};line-height:.92;text-transform:uppercase;letter-spacing:.01em;color:var(--tx);
-    transform:rotate(-6deg);text-shadow:0 ${U(2)} 0 rgba(0,0,0,.55),0 0 ${U(14)} rgba(0,0,0,.5);pointer-events:none;animation:lbIn .6s both .4s}
-  #lobby .lb-brand span{display:block}
-  #lobby .lb-brand span:last-of-type{margin-right:${U(-10)}}
-  #lobby .lb-brand .lb-mark{width:${U(26)};height:${U(22)};display:inline-block;margin:${U(6)} ${U(16)} 0 0}
+  #lobby .lb-strip{position:absolute;left:${U(452)};right:${U(392)};bottom:${U(22)};display:flex;justify-content:center;gap:${U(8)};pointer-events:none;animation:lbIn .5s both .3s}
+  #lobby .lb-strip button{pointer-events:auto;display:flex;flex-direction:column;align-items:flex-start;gap:${U(3)};min-width:${U(150)};padding:${U(9)} ${U(16)} ${U(10)};border-radius:var(--r);cursor:pointer;text-align:left;
+    background:rgba(11,12,13,.72);border:1px solid var(--ln);box-shadow:0 0 0 1px rgba(0,0,0,.45);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);transition:border-color .15s,background .15s}
+  #lobby .lb-strip button:hover{border-color:rgba(255,255,255,.24);background:rgba(20,21,22,.86)}
+  #lobby .lb-strip small{font-size:${U(11)};font-weight:700;letter-spacing:.16em;color:var(--mut)}
+  #lobby .lb-strip b{font-size:${U(18)};font-weight:700;letter-spacing:.03em;white-space:nowrap}
   #lobby .lb-build{position:absolute;left:50%;bottom:${U(4)};transform:translateX(-50%);font-size:10px;color:var(--dim);letter-spacing:.14em;pointer-events:none}
 
   #lobby .lb-tag{position:absolute;left:0;top:0;pointer-events:none;text-align:center;white-space:nowrap;transition:opacity .4s;will-change:transform}
@@ -293,7 +240,7 @@
   #lobby .lb-tag .pl .ic{font-size:${U(13)};color:var(--mut)}
   #lobby .lb-tag.me .pl{font-size:${U(18)}}
   #lobby .lb-tag.me .pl .ic.cr{color:var(--acc);font-size:${U(16)}}
-  #lobby .lb-tag small{display:block;margin-top:${U(3)};font-size:${U(12)};font-weight:700;letter-spacing:.14em;color:var(--tx2);text-shadow:0 1px 3px #000}
+  #lobby .lb-tag em{font-style:normal;font-size:${U(11)};font-weight:700;letter-spacing:.14em;color:var(--mut);margin-left:${U(2)}}
   #lobby .lb-tag .bar{position:absolute;left:-1px;top:-1px;bottom:-1px;width:${U(2)};background:var(--c)}
   @keyframes lbpulse{50%{opacity:.25}} @keyframes lbIn{from{opacity:0;transform:translateY(${U(10)})}to{opacity:1;transform:none}}
 
@@ -336,7 +283,7 @@
     background:linear-gradient(90deg,rgba(9,10,11,.95),rgba(9,10,11,.86) 50%,rgba(9,10,11,.95));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   #lobby .lb-scr.on{display:flex;animation:lbFade .2s both}
   @keyframes lbFade{from{opacity:0}to{opacity:1}}
-  #lobby.scr .lb-left,#lobby.scr .lb-right,#lobby.scr .lb-dock,#lobby.scr .lb-brand,#lobby.scr #lbTags,#lobby.scr .lb-stage,#lobby.scr #lbCanvas{visibility:hidden}
+  #lobby.scr .lb-left,#lobby.scr .lb-right,#lobby.scr .lb-strip,#lobby.scr #lbTags{visibility:hidden}
   #lobby .lb-sh{display:flex;align-items:flex-end;justify-content:space-between;gap:${U(20)};padding-bottom:${U(16)};border-bottom:1px solid var(--ln)}
   #lobby .lb-sh h2{margin:0;font-size:${U(38)};font-weight:800;letter-spacing:.03em;line-height:1;text-transform:uppercase}
   #lobby .lb-sh p{margin:${U(6)} 0 0;font-size:${U(16)};font-weight:600;color:var(--mut);max-width:${U(900)}}
@@ -380,7 +327,7 @@
   #lobby #prim button.locked,#lobby #sec button.locked{color:var(--mut);background-color:rgba(255,255,255,.012)}
   #lobby #ops button{position:relative;min-height:${U(84)};padding-left:${U(96)};display:flex;flex-direction:column;justify-content:center;font-size:${U(24)};font-weight:800;letter-spacing:.06em;
     background-repeat:no-repeat;background-size:${U(72)} ${U(72)};background-position:${U(8)} center}
-  #lobby #ops button[data-op="vanguard"]{background-image:url(${ART.ranger.face})} #lobby #ops button[data-op="axiom"]{background-image:url(${ART.viper.face})}
+
   #lobby #ops button.on::after{content:'EQUIPPED';position:absolute;right:${U(10)};top:${U(8)};font-size:${U(11)};font-weight:800;letter-spacing:.14em;color:var(--acc)}
   #lobby .wsel,#lobby .lb-wt{display:flex;align-items:baseline;gap:${U(12)};flex-wrap:wrap}
   #lobby #wselName,#lobby #opName{font-size:${U(30)};font-weight:800;letter-spacing:.03em;text-transform:uppercase;line-height:1}
@@ -489,10 +436,8 @@
   #lobby .swatches button{border-radius:50%;padding:0}
 
   @media (max-height:600px){
-    #lobby .lb-daily,#lobby .lb-right,#lobby .lb-brand,#lobby .lb-chat{display:none}
-    #lobby .lb-dock{right:${U(40)}} #lobby .lb-tag small{display:none}
+    #lobby .lb-daily,#lobby .lb-right,#lobby .lb-strip{display:none}
     #lobby .lb-left{top:${U(78)}} #lobby .lb-right{top:${U(78)}}
-    #lobby .lb-dock{bottom:${U(14)}} #lobby .lb-dk{width:${U(140)};height:${U(100)}}
   }
   @media (max-height:600px),(max-width:1000px){
     #lobby .lb-scr{padding:${U(14)} ${U(18)}}
@@ -502,10 +447,11 @@
     #lobby .lb-cv{min-height:${U(260)};flex:none}
   }
   @media (max-aspect-ratio:1/1){
-    #lobby .lb-right,#lobby .lb-brand,#lobby .lb-dock{display:none}
+    #lobby .lb-right,#lobby .lb-strip{display:none}
     #lobby .lb-tabs button{padding:0 ${U(10)}}
   }
   /* things the game shows on top of the lobby */
+  body.lbOpen #hud,body.lbOpen #dead,body.lbOpen #kcam{visibility:hidden!important}   /* the paused match's HUD stays out of the lobby's picture */
   body.lbOpen #toasts{z-index:8600}
   body.lbOpen .toast{background:rgba(14,15,16,.95);border-left:2px solid #ef8a2c;border-radius:2px;color:#e8e6e1;box-shadow:0 0 0 1px rgba(0,0,0,.6)}
   body.lbOpen .toast b{color:#e8e6e1}
@@ -524,12 +470,13 @@
   const TABS = ['PLAY', 'LOADOUT', 'OPERATORS', 'BATTLE PASS', 'STORE'];
   const BRUSH = 'M10 14 C60 6 190 10 300 4 C335 2 362 6 384 3 L392 14 L386 24 L397 38 L389 52 L398 66 L390 80 L396 96 L386 108 L394 118 C300 121 160 116 60 120 L14 121 L5 110 L12 98 L3 84 L11 70 L2 56 L10 42 L1 28 Z';
   const el = document.createElement('div'); el.id = 'lobby';
-  el.innerHTML = `<div class="lb-bg"></div><canvas id="lbCanvas"></canvas><div class="lb-stage" id="lbStage"></div><div class="lb-vig"></div><div id="lbTags"></div>
+  el.innerHTML = `<div class="lb-bg"></div><div class="lb-vig"></div><div id="lbTags"></div>
   <div class="lb-ui">
     <header class="lb-top">
       <div class="lb-logo">${LOGO}<span>BOOM <b>ARENA</b></span></div>
       <nav class="lb-tabs" id="lbTabs">${TABS.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</nav>
       <div class="lb-tr">
+        <button class="lb-ib" id="lbMus" title="Lobby music">${ico('speaker')}</button>
         <button class="lb-ib" id="lbGear" title="Settings">${ico('gear')}</button>
         <span class="lb-cnt" title="Players in the match">${ico('users')}<span id="lbCnt">4/8</span></span>
         <button class="lb-me" id="lbMe" title="Locker: calling cards, emblems, charms"></button>
@@ -538,10 +485,10 @@
     </header>
     <section class="lb-left">
       <div class="lb-modeb" id="lbModeB" title="Change match type"><div class="lb-emb" id="lbEmb"></div><div class="lb-mt"><b id="lbModeName"></b><small id="lbModeDesc"></small></div></div>
-      <button class="lb-map" id="lbMap" title="Change map"><div class="th"></div><div class="tx">${ico('pin')}<div><b id="lbMapName"></b><small>PRIMARY MAP</small></div></div></button>
+      <button class="lb-map" id="lbMap" title="Change map"><div class="th" id="lbMapTh"></div><div class="tx">${ico('pin')}<div><b id="lbMapName"></b><small>PRIMARY MAP</small></div></div></button>
       <div class="lb-sp"></div>
       <div class="lb-pn lb-daily" id="lbDailyP" title="All challenges and the season pass"><div class="lb-ph"><span class="t">DAILY CHALLENGES</span><span class="r">${ico('clock')}<span id="lbReset"></span></span></div><div id="lbDaily"></div></div>
-      <div class="lb-fill">${ico('users')}<span class="sqf">SQUAD FILL</span><span class="onl">UP TO 8 PLAYERS · BOTS FILL IN</span><button class="sw" id="lbFill" title="Fill your squad with bots"></button><button class="lb-leave" id="lbLeave">LEAVE MATCH</button><button class="lb-ib" id="lbMus" title="Lobby music">${ico('speaker')}</button></div>
+      <div class="lb-fill lb-st">${ico('users')}<span class="onl">UP TO 8 PLAYERS · BOTS FILL IN</span><span class="pz">MATCH PAUSED</span><button class="lb-leave" id="lbLeave">LEAVE MATCH</button></div>
       <div class="lb-fill lb-net" id="lbNet">${ico('net')}<span class="sqf">ONLINE</span><button class="st" id="lbNetSt" title="Name, invite link, join a friend"></button><button class="lb-inv" id="lbInvite" title="Invite friends to your match">${ico('users')}INVITE</button><button class="sw" id="lbOnline" title="Play against people online (bots fill the empty places)"></button></div>
       <button class="lb-play" id="lbPlay">
         <svg class="brush" viewBox="0 0 400 124" preserveAspectRatio="none" aria-hidden="true"><defs>
@@ -550,19 +497,16 @@
           <g filter="url(#lbRough)"><path d="${BRUSH}" fill="url(#lbPgr)"/></g></svg>
         <span class="pt">${ico('play')}<span id="lbPlayT">PLAY</span></span><small id="lbPlaySub"></small>
       </button>
-      <div class="lb-chat" id="lbChat"><div class="lb-chatlog" id="lbChatLog"></div>${ico('chat')}<input id="lbChatIn" maxlength="80" placeholder="Press Enter to chat" autocomplete="off" spellcheck="false">${ico('net')}</div>
     </section>
     <section class="lb-right">
       <div class="lb-pn lb-squad"><div class="lb-ph"><span class="t" id="lbSqT">YOUR SQUAD</span><span class="r" id="lbSqN">4/4</span></div><div id="lbSquad"></div></div>
       <div class="lb-pn lb-sets"><div class="lb-ph"><span class="t">${ico('gear')}SETTINGS</span><span class="r">Next match</span></div><div id="lbSets"></div></div>
     </section>
-    <nav class="lb-dock">
-      <button class="lb-dk" data-go="LOADOUT" style="--d:.3s"><span class="cap" id="lbDkLo"></span><div class="art"><img src="lobby/gun-ar.webp" alt="" draggable="false"></div><div class="lab">${ico('gun')}LOADOUT</div></button>
-      <button class="lb-dk" data-go="OPERATORS" style="--d:.35s"><span class="cap" id="lbDkOpN"></span><div class="art"><img class="op" id="lbDkOp" alt="" draggable="false"></div><div class="lab">${ico('helm')}OPERATORS</div></button>
-      <button class="lb-dk pass" data-go="BATTLE PASS" style="--d:.4s"><div class="art">${PASS_ART}</div><div class="tier" id="lbTier"></div><div class="lab">BATTLE PASS</div><div class="tbar"><i id="lbTierBar"></i></div></button>
-      <button class="lb-dk" data-go="STORE" style="--d:.45s"><span class="cap" id="lbDkSt"></span><div class="art">${COIN}</div><div class="lab">${ico('store')}STORE</div></button>
+    <nav class="lb-strip">
+      <button data-go="LOADOUT" title="Change your loadout"><small>PRIMARY</small><b id="lbStP"></b></button>
+      <button data-go="LOADOUT" title="Change your loadout"><small>SECONDARY</small><b id="lbStS"></b></button>
+      <button data-go="OPERATORS" title="Change your operator"><small>OPERATOR</small><b id="lbStO"></b></button>
     </nav>
-    <div class="lb-brand"><span>GOOD VIBES</span><span>BETTER WINS</span>${LOGO}</div>
     <div class="lb-build">BUILD ${BUILD}</div>
   </div>
   <section class="lb-scr" id="lbScr"></section>
@@ -581,9 +525,8 @@
   const toastMsg = (a, b = '') => { try { toast(a, b); } catch (e) {} };
 
   // ---------------- squad state ----------------
-  let open = false, paused = false, fillT = null, tickT = null, tPrev = 0, use3D = false, joined = 0, cur = 'PLAY';
-  const fillPref = () => store.get('boomSquadFill', '1') !== '0';
-  const fillOn = () => fillPref() && !netAny();
+  let open = false, paused = false, tickT = null, cur = 'PLAY';
+  const fillOn = () => !netAny();   // offline, three bots stand with you; online it's whoever joins
   // ---------------- online: the game's netcode (BoomNet in index.html) does the work, the lobby drives it ----------------
   const ns = () => window.BoomNet ? BoomNet.state() : null;
   const onlineOn = () => store.get('boomOnline', '0') === '1';
@@ -599,65 +542,82 @@
   }
   const myName = () => (store.get('boomNetName', '') || 'Vanguard').slice(0, 14);
   const myLevel = () => { const c = careerOf(xpTotal); return c.master ? 'M' + c.master : c.level; };
-  const squadSize = () => 1 + (fillOn() ? joined : 0);
-  // the live 3D squad on the stage is opt-in: the staged art reads closer to the target look
-  const want3D = () => /[?&]lobby3d/.test(location.search) || store.get('boomLobby3D', '') === '1';
+  const squadSize = () => 1 + (fillOn() ? 3 : 0);
 
-  // ---------------- staged art ----------------
-  function stageArt() {
-    const list = [{ art: heroArt(), hero: true }, ...mates().map(m => ({ art: m.art }))];
-    $('lbStage').innerHTML = list.map((m, i) => {
-      const a = ART[m.art], s = SLOTS[i];
-      return `<div class="lb-fig ${m.hero ? 'hero' : ''}" data-i="${i}" style="left:${s.x*100}%;top:${s.y*100}%;height:${s.h*100}vh;width:${s.h*a.ar*100}vh;z-index:${i ? 4 - i : 5};--img:url(${a.src})">
-        <img class="refl" src="${a.src}" alt="" draggable="false"><img class="body" src="${a.src}" alt="" draggable="false"><div class="wash"></div></div>`;
-    }).join('');
-    figs();
-  }
-  function figs() {
-    $('lbStage').querySelectorAll('.lb-fig').forEach(f => { const i = +f.dataset.i; f.classList.toggle('in', !i || (fillOn() && joined >= i)); });
-  }
+  // ---------------- the stage: your squad stands in the map itself ----------------
+  // Drawn by the game's own renderer, so it is lit, shadowed and graded exactly like a match. The lobby finds a clear
+  // spot with some depth behind it, stands the squad there and holds the camera in front of them.
+  const ST = { spot: undefined, squad: [], t: 0, fov0: 0, mx: 0, my: 0, tx: 0, ty: 0, hidden: [], shots: {}, shotAt: 0, live: false };
+  const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Vector3(), _hits = [];
+  const CAM = { fov: 27, dist: 7.1, h: 1.25, look: 1.02, side: .42 };
+  // where each one stands: metres to the right on screen, metres further from the camera, turn of the body, how the gun is carried
+  const FORM = [{ x: 0, z: 0, face: .14, carry: 0 }, { x: -1.02, z: .95, face: .36, carry: 1 }, { x: .98, z: 1.15, face: -.3, carry: 2 }, { x: 1.9, z: 2.3, face: -.48, carry: 1 }];
+  // gun carries, in the soldier's own frame (x left, y up, z forward): where the firing hand holds the grip, and how
+  // far the muzzle drops (pitch), swings across the body (yaw) and cants (roll)
+  const CARRY = [
+    { grip: [-.13, 1.07, .2], pitch: .6, yaw: .66, roll: -.1 },     // low ready
+    { grip: [-.16, 1.0, .17], pitch: 1.02, yaw: .34, roll: -.16 },  // relaxed, muzzle at the ground
+    { grip: [-.12, 1.1, .21], pitch: -.4, yaw: .92, roll: .2 },     // port arms
+  ];
+  const GUN3P = 1.06;
+  const stageOK = () => has3D() && !MAPDEF.br && typeof renderFrame === 'function';
+  const heroWid = () => (typeof pendingLoadout !== 'undefined' && pendingLoadout ? pendingLoadout[0] : loadout[0]);
+  const isShort = () => innerHeight <= 600;
 
-  // ---------------- 3D stage (the real operator models, with ?lobby3d) ----------------
-  let pv = null, squad = [], drag = null;
-  const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Vector3();
-  function initView() {
-    if (pv) return;
-    try {
-      const cv = $('lbCanvas'), r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, premultipliedAlpha: true });
-      r.setClearColor(0x000000, 0);
-      r.setPixelRatio(Math.min(devicePixelRatio, (typeof TOUCHPAD !== 'undefined' && TOUCHPAD.on) ? 1.25 : 1.5)); r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = .9;
-      r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
-      const s = new THREE.Scene();
-      { const es = new THREE.Scene(), pm = new THREE.PMREMGenerator(r), box = (c, i, x, y, z, w, h) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(i), side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 1, 0); es.add(m); };
-        es.background = new THREE.Color(0x1c1816);
-        box(0xffa868, 4, -2, 1.5, -6, 6, 2.5); box(0x8090b0, 1.4, 0, 7, 0, 14, 8); box(0xffe0c8, 1.4, 3, 3, 6, 5, 4); box(0x141210, 1, 0, -2, 0, 14, 14);
-        s.environment = pm.fromScene(es, .04).texture; pm.dispose(); }
-      s.add(new THREE.HemisphereLight(0xe8d4c0, 0x1e1c1c, .45));
-      const sun = new THREE.DirectionalLight(0xffb070, 2.6); sun.position.set(-2.5, 5.2, -6.5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-      sun.shadow.bias = -.0004; sun.shadow.normalBias = .02; sun.shadow.radius = 4;
-      Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: .5, far: 24 }); s.add(sun);
-      const rim = new THREE.DirectionalLight(0xff9a60, 1.1); rim.position.set(5, 2.5, -5); s.add(rim);
-      const fill = new THREE.DirectionalLight(0xd0d8e8, .7); fill.position.set(1.5, 3, 7); s.add(fill);
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: .5 }));
-      ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; s.add(ground);
-      const cam = new THREE.PerspectiveCamera(30, 1, .1, 60); cam.position.set(0, 1.45, 7.6); cam.lookAt(0, 1.0, 0);
-      pv = { r, s, cam, t: 0 };
-      cv.addEventListener('pointerdown', e => { if (!squad[0]) return; drag = { x: e.clientX, r: squad[0].spin || 0 }; cv.setPointerCapture(e.pointerId); musStart(); });
-      cv.addEventListener('pointermove', e => { if (drag && squad[0]) squad[0].spin = clamp(drag.r + (e.clientX - drag.x)*.01, -2.4, 2.4); });
-      cv.addEventListener('pointerup', () => { drag = null; });
-    } catch (e) { console.warn('lobby 3D unavailable', e); pv = null; }
+  // nothing solid between shin and head height
+  function free(x, z, r) {
+    if (Math.abs(x) > ARENA - 1.2 || Math.abs(z) > ARENA - 1.2) return false;
+    for (const b of queryBoxes(x - r, z - r, x + r, z + r, _hits)) if (b.maxY > .22 && b.minY < 1.95 && x > b.minX - r && x < b.maxX + r && z > b.minZ - r && z < b.maxZ + r) return false;
+    return true;
   }
-  function makeFighter(opId, skin, wid) {
+  // on a path, a street or bare ground (no tall grass around the boots or in front of the lens)
+  const paved = (x, z) => !(MAPDEF.grass > 0) || (MAPDEF.noGrass || []).some(([x0, z0, x1, z1]) => x > x0 + .25 && x < x1 - .25 && z > z0 + .25 && z < z1 - .25);
+  const reach = (x, y, z, dx, dz, far) => Math.min(far, rayBoxes(x, y, z, dx, 1e-5, dz, far));
+  function scoreSpot(px, pz, a) {
+    const fx = Math.sin(a), fz = Math.cos(a), rx = -fz, rz = fx;
+    const g0 = groundAt(_v.set(px, .5, pz));
+    for (const m of FORM) { const x = px + rx*m.x + fx*m.z, z = pz + rz*m.x + fz*m.z; if (!free(x, z, .6) || Math.abs(groundAt(_v.set(x, .5, z)) - g0) > .03) return -1; }
+    let hard = 0, lit = 0;
+    for (const m of FORM) { const x = px + rx*m.x + fx*m.z, z = pz + rz*m.x + fz*m.z; if (paved(x, z)) hard++; if (rayBoxes(x, g0 + 1.35, z, SUN_DIR.x, SUN_DIR.y, SUN_DIR.z, 70) >= 70) lit++; }
+    if (lit < 3) return -1;   // standing in a building's shadow
+    const cx = px + rx*CAM.side - fx*CAM.dist, cz = pz + rz*CAM.side - fz*CAM.dist;
+    for (const t of [.2, .45, .7, .9]) if (paved(cx + (px - cx)*t, cz + (pz - cz)*t)) hard += .5;
+    if (!free(cx, cz, 1) || Math.abs(groundAt(_v.set(cx, .5, cz)) - g0) > .5) return -1;
+    // nothing between the lens and the squad
+    for (const s of [-1.9, -.9, 0, .9, 1.9, 2.8]) for (const y of [.35, 1.2]) { const tx = px + rx*s + fx*1.2 - cx, tz = pz + rz*s + fz*1.2 - cz, L = Math.hypot(tx, tz); if (reach(cx, g0 + y, cz, tx/L, tz/L, L) < L - .05) return -1; }
+    // depth behind them: how far the eye travels past the squad, across the frame
+    const ds = [];
+    for (const s of [-.42, -.28, -.14, 0, .14, .28, .42]) { const dx = fx + rx*s, dz = fz + rz*s, L = Math.hypot(dx, dz); ds.push(reach(cx, g0 + 1.4, cz, dx/L, dz/L, 80) - CAM.dist); }
+    const near = Math.min(...ds), mean = ds.reduce((s, d) => s + Math.min(d, 30), 0)/ds.length;
+    if (near < 7) return -1;   // a wall right behind them
+    const vary = Math.sqrt(ds.reduce((s, d) => s + (Math.min(d, 30) - mean)**2, 0)/ds.length);
+    const sun = fx*SUN_DIR.x + fz*SUN_DIR.z;   // -1: the sun behind the lens (flat light), +1: straight into it
+    const sunK = 1 - Math.min(1, Math.abs(sun + .3)/1.1);
+    const inward = -(px*fx + pz*fz)/Math.max(1, Math.hypot(px, pz));   // looking across the map, not at the fence
+    return mean + Math.min(8, vary)*.9 + sunK*12 + inward*5 + Math.min(10, Math.hypot(px, pz))*.3 + hard*5 + lit*3;
+  }
+  function findSpot() {
+    let best = null, bs = 0;
+    if (MAPDEF.lobby) best = { x: MAPDEF.lobby[0], z: MAPDEF.lobby[1], a: MAPDEF.lobby[2] };
+    else { const A = ARENA - 3; for (let x = -A; x <= A; x += 1) for (let z = -A; z <= A; z += 1) for (let k = 0; k < 16; k++) { const s = scoreSpot(x, z, k*Math.PI/8); if (s > bs) { bs = s; best = { x, z, a: k*Math.PI/8 }; } } }
+    if (best) best.y = groundAt(_v.set(best.x, .5, best.z));
+    return best;
+  }
+  function makeFighter(opId, skin, wid, carry, mine) {
     const o = { group: new THREE.Group(), pivot: new THREE.Group() };
     o.group.add(o.pivot);
     setOperator(o, opId, skin);
     if (o.acts && o.acts.Idle) for (const n in o.acts) o.acts[n].setEffectiveWeight(n === 'Idle' ? 1 : 0);
     try {
-      const w = WEAPONS[wid] || WEAPONS[0], g = buildGun(w.model, false, (typeof skinSel !== 'undefined' && skinSel[w.id]) || 'factory');
-      g.rotation.y = Math.PI; g.scale.setScalar({ smg: 1.45, ar: 1.3, lmg: 1.2, shotgun: 1.3, sniper: 1.15, dmr: 1.2 }[w.model] || 1.3);
-      g.position.set(-.12, 1.18, .24); g.rotation.x = .55;   // low ready
-      o.pivot.add(g); o.gun = g;
-    } catch (e) {}
+      const w = WEAPONS[wid] || WEAPONS[0], g = buildGun(w.model, false, (mine && typeof skinSel !== 'undefined' && skinSel[w.id]) || 'factory', mine && typeof getAtt === 'function' ? getAtt(w) : undefined);
+      if (g.userData.glint) g.remove(g.userData.glint);
+      const c = CARRY[carry] || CARRY[0], hold = new THREE.Group(); hold.rotation.order = 'YXZ'; hold.rotation.set(c.pitch, c.yaw, c.roll);
+      g.rotation.y = Math.PI; g.scale.setScalar(GUN3P); hold.add(g); o.pivot.add(hold);
+      // the carry says where the firing hand is: bring the gun's grip to it
+      o.group.updateMatrixWorld(true); g.localToWorld(_v.copy(g.userData.grip));
+      hold.position.set(c.grip[0] - _v.x, c.grip[1] - _v.y, c.grip[2] - _v.z);
+      o.gun = g;
+    } catch (e) { console.warn('lobby gun', e); }
     o.group.traverse(m => { if (m.isMesh) m.castShadow = true; });
     o.ph = Math.random()*6;
     return o;
@@ -665,84 +625,132 @@
   function armsIK(o) {
     if (!o.gun || !o.gun.userData || typeof solveArm !== 'function') return;
     try {
-      o.group.updateMatrixWorld(true); const gu = o.gun.userData;
-      if (o.armR && gu.grip) { o.gun.localToWorld(_v.copy(gu.grip)); o.group.localToWorld(_q.set(-.9, .4, -.3)); solveArm(o.armR, _v, _q); }
-      if (o.armL && gu.fore) { o.gun.localToWorld(_w.copy(gu.fore)); o.group.localToWorld(_q.set(.9, .5, .2)); solveArm(o.armL, _w, _q); }
+      const gu = o.gun.userData;
+      if (o.armR && gu.grip) { o.gun.localToWorld(_v.copy(gu.grip)); o.group.localToWorld(_q.set(-.9, .3, -.4)); solveArm(o.armR, _v, _q); }
+      if (o.armL && gu.fore) { o.gun.localToWorld(_w.copy(gu.fore)); o.group.localToWorld(_q.set(.9, .3, .1)); solveArm(o.armL, _w, _q); }
     } catch (e) { o.gun.userData = null; }
   }
-  // feet position on the ground for a screen slot (so the 3D squad lines up with the HUD at any aspect ratio)
-  function slotWorld(i, out) {
-    const s = SLOTS[i], c = pv.cam;
-    out.set(s.x*2 - 1, -(s.y*2 - 1), .5).unproject(c).sub(c.position).normalize();
-    const t = -c.position.y / Math.min(-.02, out.y);
-    return out.multiplyScalar(t).add(c.position);
-  }
   function placeSquad() {
-    const c = pv.cam, fwd = c.getWorldDirection(_q), k = 2*Math.tan(c.fov*Math.PI/360);
-    for (const o of squad) {
-      slotWorld(o.slot, _w); o.group.position.set(_w.x, 0, _w.z);
-      o.base = Math.atan2(c.position.x - _w.x, c.position.z - _w.z) + (o.face || 0);
-      // sized to the slot's screen height, like the staged art (the kneeling slot gets a standing body, so a bit less)
-      o.fit = clamp(SLOTS[o.slot].h*(o.slot === 3 ? 1.25 : 1)*k*_w.sub(c.position).dot(fwd)/1.8, .7, 1.6);
+    const s = ST.spot; if (!s) return;
+    const fx = Math.sin(s.a), fz = Math.cos(s.a), rx = -fz, rz = fx;
+    const sq = Math.min(1, Math.max(.7, innerWidth/innerHeight/1.78));   // narrower screens: the squad closes up so nobody stands behind a panel
+    for (const o of ST.squad) { const m = FORM[o.slot]; o.group.position.set(s.x + rx*m.x*sq + fx*m.z, s.y, s.z + rz*m.x*sq + fz*m.z); o.group.rotation.y = Math.atan2(-fx, -fz) + m.face; }
+  }
+  function buildSquad() {
+    for (const o of ST.squad) { scene.remove(o.group); for (const m of o.bodyMats || []) m.dispose(); }
+    const me = makeFighter(myOp, mySkin, heroWid(), FORM[0].carry, true);
+    Object.assign(me, { slot: 0, me: true, op: myOp, sk: mySkin, wid: heroWid(), key: myOp + '|' + mySkin });
+    ST.squad = [me];
+    mates().forEach((m, i) => { const o = makeFighter(m.op, m.skin, WID[m.gun] != null ? WID[m.gun] : 0, FORM[i + 1].carry); o.slot = i + 1; o.key = m.op + '|' + m.skin; ST.squad.push(o); });
+    for (const o of ST.squad) { o.group.visible = false; scene.add(o.group); }
+    placeSquad(); ST.shotAt = ST.t + .5;
+  }
+  const heroChanged = () => { const h = ST.squad[0]; return !h || h.op !== myOp || h.sk !== mySkin || h.wid !== heroWid(); };
+  // the camera sits in front of the squad, drifts a little and leans with the mouse
+  function aim() {
+    const s = ST.spot, yaw = s.a + Math.sin(ST.t*.1)*.028 + ST.mx*.05, fx = Math.sin(yaw), fz = Math.cos(yaw);
+    const tx = s.x - Math.cos(s.a)*CAM.side, tz = s.z + Math.sin(s.a)*CAM.side, d = CAM.dist + Math.sin(ST.t*.07)*.1;
+    camera.position.set(tx - fx*d, s.y + CAM.h - ST.my*.07, tz - fz*d);
+    if (camera.fov !== CAM.fov) { camera.fov = CAM.fov; camera.updateProjectionMatrix(); }
+    camera.lookAt(tx, s.y + CAM.look, tz); camera.updateMatrixWorld(); camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+    sky.position.copy(camera.position); updateSun(s.x, s.z); vmRoot.visible = false;
+  }
+  // called by the game every frame while the lobby is up: true when it has set the view for the game to draw
+  function stage(dt) {
+    if (!open || cur !== 'PLAY' || !stageOK()) return false;
+    if (ST.spot === undefined) { try { ST.spot = findSpot() || null; } catch (e) { console.warn('lobby spot', e); ST.spot = null; } }
+    if (!ST.spot) return false;
+    if (!ST.squad.length || heroChanged()) buildSquad();
+    if (!ST.live) { ST.live = true; ST.fov0 = camera.fov; el.classList.add('live'); }
+    ST.t += dt; ST.mx += (ST.tx - ST.mx)*Math.min(1, dt*2.5); ST.my += (ST.ty - ST.my)*Math.min(1, dt*2.5);
+    // bots waiting at their spawns stay out of the picture until the match starts
+    if (!started) for (const b of bots) if (b.group.visible) { b.group.visible = false; ST.hidden.push(b); }
+    const alone = netAny();
+    for (const o of ST.squad) {
+      const vis = o.me || !alone;
+      o.group.visible = vis; if (!vis) continue;
+      if (o.mixer) o.mixer.update(dt);
+      o.group.updateMatrixWorld(true);
+      // a little life on top of the idle loop: the shoulders turn a touch, the head looks around
+      if (o.spine && o.spine.length) twistChain(o.spine, Math.sin(ST.t*.29 + o.ph)*.05);
+      if (o.headBone) twistBone(o.headBone, Math.sin(ST.t*.21 + o.ph*1.7)*.17);
+      armsIK(o);
     }
+    aim();
+    if (ST.shotAt && ST.t >= ST.shotAt) { ST.shotAt = 0; shots(); aim(); }
+    tags();
+    return true;
   }
-  function build3D() {
-    for (const o of squad) { pv.s.remove(o.group); o.group.traverse(m => { if (m.isMesh) (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => x.dispose()); }); }
-    squad = [];
-    const me = makeFighter(myOp, mySkin, loadout[0]); Object.assign(me, { slot: 0, me: true, op: myOp, sk: mySkin, wid: loadout[0], face: .12 });
-    pv.s.add(me.group); squad.push(me);
-    mates().forEach((m, i) => {
-      const wid = WID[m.gun] != null ? WID[m.gun] : 0, o = makeFighter(m.op, m.skin, wid);
-      Object.assign(o, { slot: i + 1, face: m.face, pop: 0 }); o.group.visible = false; pv.s.add(o.group); squad.push(o);
-    });
-    placeSquad();
+  function unstage() {
+    if (!ST.live) return;
+    ST.live = false; el.classList.remove('live');
+    for (const o of ST.squad) o.group.visible = false;
+    for (const b of ST.hidden) b.group.visible = true; ST.hidden.length = 0;
+    if (ST.fov0) { camera.fov = ST.fov0; camera.updateProjectionMatrix(); }
   }
-  function heroChanged() { const h = squad[0]; return !h || h.op !== myOp || h.sk !== mySkin || h.wid !== loadout[0]; }
-  function refreshHero() {
-    if (use3D) { if (pv && heroChanged()) build3D(); }
-    else if (!$('lbStage').querySelector(`.hero .body[src="${ART[heroArt()].src}"]`)) stageArt();
-    else figs();
-    $('lbDkOp').src = ART[heroArt()].src; $('lbMe').style.backgroundImage = `url(${ART[heroArt()].face})`;
+  // portraits and the map picture are photographs of the real thing: the game draws one frame from each viewpoint
+  function grab(w, h) {
+    const src = renderer.domElement, c = document.createElement('canvas'); c.width = w; c.height = h;
+    const k = Math.max(w/src.width, h/src.height), sw = w/k, sh = h/k;
+    c.getContext('2d').drawImage(src, (src.width - sw)/2, (src.height - sh)/2, sw, sh, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', .86);
+  }
+  function shots() {
+    try {
+      const shown = ST.squad.filter(o => o.group.visible), all = ST.squad.slice();
+      for (const o of all) {
+        if (!o.headBone) continue;
+        all.forEach(x => { x.group.visible = x === o; });
+        o.group.updateMatrixWorld(true); o.headBone.getWorldPosition(_v); _v.y += .1;
+        const a = o.group.rotation.y + .3;
+        camera.fov = 15; camera.updateProjectionMatrix();
+        camera.position.set(_v.x + Math.sin(a)*1.9, _v.y + .03, _v.z + Math.cos(a)*1.9); camera.lookAt(_v); camera.updateMatrixWorld();
+        sky.position.copy(camera.position);
+        renderFrame(.001); ST.shots[o.key] = grab(112, 112);
+      }
+      all.forEach(x => { x.group.visible = false; });
+      if (!ST.shots.map) {
+        camera.fov = 50; camera.updateProjectionMatrix();
+        camera.position.set(ARENA*.72, ARENA*.5, ARENA*.72); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(); sky.position.copy(camera.position);
+        renderFrame(.001); ST.shots.map = grab(216, 136);
+      }
+      all.forEach(x => { x.group.visible = shown.includes(x); });
+      camera.fov = 0;   // (aim() sets the lobby lens again)
+      paint();
+    } catch (e) { console.warn('lobby shots', e); }
+  }
+  const face = key => ST.shots[key] || '';
+  const faceCss = key => face(key) ? `background-image:url(${face(key)})` : '';
+  const myKey = () => myOp + '|' + mySkin;
+  function paint() {
+    $('lbMe').style.backgroundImage = face(myKey()) ? `url(${face(myKey())})` : '';
+    if (ST.shots.map) $('lbMapTh').style.backgroundImage = `url(${ST.shots.map})`;
+    if (cur === 'PLAY') squadPanel();
+    opFaces();
+  }
+  // the operator buttons (the game's own) get the portraits too
+  function opFaces() {
+    document.querySelectorAll('#ops button[data-op]').forEach(b => { const id = b.dataset.op, k = id === myOp ? myKey() : id + '|standard'; if (face(k)) b.style.backgroundImage = `url(${face(k)})`; });
   }
 
   // name plates over each squad member's head
   function tagsHTML() {
     const ms = mates();
     $('lbTags').innerHTML = [0, 1, 2, 3].map(i => i
-      ? `<div class="lb-tag" data-i="${i}" style="--c:${SLOT_COL[i]}"><div class="pl"><i class="bar"></i>${ico('mic')}<b>${ms[i - 1].name}</b>${ico('speaker')}</div><small>LVL ${mateLv(ms[i - 1].name)}</small></div>`
-      : `<div class="lb-tag me" data-i="0" style="--c:${SLOT_COL[0]}"><div class="pl"><i class="bar"></i>${ico('crown', 'cr')}<b>${esc(myName())}</b>${ico('speaker')}</div><small>LVL ${myLevel()}</small></div>`).join('');
+      ? `<div class="lb-tag" data-i="${i}" style="--c:${SLOT_COL[i]}"><div class="pl"><i class="bar"></i><b>${ms[i - 1].name}</b><em>BOT</em></div></div>`
+      : `<div class="lb-tag me" data-i="0" style="--c:${SLOT_COL[0]}"><div class="pl"><i class="bar"></i>${ico('crown', 'cr')}<b>${esc(myName())}</b><em>LV ${myLevel()}</em></div></div>`).join('');
   }
   function tags() {
     const W = innerWidth, H = innerHeight;
     $('lbTags').querySelectorAll('.lb-tag').forEach(t => {
-      const i = +t.dataset.i, s = SLOTS[i], vis = !i || (fillOn() && joined >= i);
-      let x, y;
-      if (use3D && pv && squad[i]) { const g = squad[i].group; _v.set(g.position.x, 1.98*g.scale.y, g.position.z).project(pv.cam); x = (_v.x*.5 + .5)*W; y = (-_v.y*.5 + .5)*H; }
-      else { const a = ART[i ? mates()[i - 1].art : heroArt()], h = s.h*H; x = s.x*W + (a.hx - .5)*h*a.ar; y = s.y*H - h; }
-      t.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,calc(-100% - ${i ? 6 : 10}px))`;
+      const o = ST.squad[+t.dataset.i]; let vis = !!(ST.live && o && o.group.visible && cur === 'PLAY');
+      if (vis) {
+        if (o.headBone) o.headBone.getWorldPosition(_v); else _v.copy(o.group.position).setY(o.group.position.y + 1.6);
+        _v.y += .36; _v.project(camera); vis = _v.z < 1;
+        t.style.transform = `translate(${((_v.x*.5 + .5)*W).toFixed(1)}px,${((-_v.y*.5 + .5)*H).toFixed(1)}px) translate(-50%,-100%)`;
+      }
       t.style.opacity = vis ? 1 : 0;
     });
-  }
-  function frame(t) {
-    if (!open) return;
-    requestAnimationFrame(frame);
-    const dt = Math.min(.05, (t - tPrev)/1000 || .016); tPrev = t;
-    if (!use3D || !pv || cur !== 'PLAY') return;
-    const cv = pv.r.domElement, w = cv.clientWidth, h = cv.clientHeight;
-    if (w && h && (w !== pv.w || h !== pv.h)) { pv.w = w; pv.h = h; pv.r.setSize(w, h, false); pv.cam.aspect = w/h; pv.cam.updateProjectionMatrix(); placeSquad(); }
-    pv.t += dt;
-    for (const o of squad) {
-      const vis = o.me || (fillOn() && joined >= o.slot);
-      if (vis && !o.group.visible) { o.group.visible = true; o.pop = 0; }
-      if (!vis) { o.group.visible = false; continue; }
-      if (o.pop != null && o.pop < 1) o.pop = Math.min(1, o.pop + dt*3.5);
-      o.group.scale.setScalar(Math.max(.01, o.pop != null ? 1 - Math.pow(1 - o.pop, 3) : 1)*(o.fit || 1));
-      o.group.rotation.y = o.base + (o.spin || 0) + Math.sin(pv.t*.4 + o.ph)*.05;
-      if (o.mixer) o.mixer.update(dt);
-      armsIK(o);
-    }
-    pv.r.render(pv.s, pv.cam);
-    tags();
   }
 
   // ---------------- hub panels ----------------
@@ -810,24 +818,17 @@
     }).join('');
   }
   function squadPanel() {
-    $('lbFill').textContent = fillPref() ? 'ON' : 'OFF'; $('lbFill').classList.toggle('on', fillPref());
     if (netAny()) return netSquad();
     $('lbSqT').textContent = 'YOUR SQUAD';
-    const ms = mates(), rows = [`<div class="lb-sq" style="--c:${SLOT_COL[0]}"><div class="av" style="background-image:url(${ART[heroArt()].face})"></div><div class="nm"><b>${ico('crown')}${esc(myName())}</b><small><i></i>Ready</small></div>${ico('headset', 'hs')}</div>`];
-    ms.forEach((m, k) => {
-      const i = k + 1;
-      if (!fillOn()) rows.push(`<div class="lb-sq open" style="--c:rgba(255,255,255,.15)"><div class="av">${ico('plus')}</div><div class="nm"><b>OPEN SLOT</b><small style="color:var(--mut)">Squad fill is off</small></div></div>`);
-      else if (joined < i) rows.push(`<div class="lb-sq wait" style="--c:${SLOT_COL[i]}"><div class="av"></div><div class="nm"><b>SEARCHING…</b><small><i></i>Finding a squadmate</small></div></div>`);
-      else rows.push(`<div class="lb-sq" style="--c:${SLOT_COL[i]}"><div class="av" style="background-image:url(${ART[m.art].face})"></div><div class="nm"><b>${m.name}</b><small><i></i>Ready</small></div>${ico('headset', 'hs')}</div>`);
-    });
-    $('lbSquad').innerHTML = rows.join('');
+    const row = (i, name, key, sub, crown) => `<div class="lb-sq" style="--c:${SLOT_COL[i]}"><div class="av" style="${faceCss(key)}">${face(key) ? '' : ico('helm')}</div><div class="nm"><b>${crown ? ico('crown') : ''}${esc(name)}</b><small>${sub}</small></div></div>`;
+    $('lbSquad').innerHTML = row(0, myName(), myKey(), `<i></i>${opName()} · Level ${myLevel()}`, true) + mates().map((m, k) => row(k + 1, m.name, m.op + '|' + m.skin, `Bot · ${OPS[m.op] ? OPS[m.op].name : ''}`)).join('');
     $('lbSqN').textContent = `${squadSize()}/4`;
   }
   // online: the people in your match (bots take every empty place, up to 8)
   function netSquad() {
     const s = ns(), people = s.on ? s.people : [myName()];
     $('lbSqT').textContent = s.on ? 'IN THIS MATCH' : 'ONLINE';
-    const rows = people.slice(0, 5).map((p, i) => `<div class="lb-sq" style="--c:${SLOT_COL[i % SLOT_COL.length]}"><div class="av" ${i ? '' : `style="background-image:url(${ART[heroArt()].face})"`}>${i ? ico('users') : ''}</div><div class="nm"><b>${i ? '' : ico('crown')}${esc(i ? p : myName())}</b><small><i></i>${i ? 'Online' : s.on ? (s.deployed ? 'In the fight' : 'In the lobby') : 'Ready'}</small></div>${ico('headset', 'hs')}</div>`);
+    const rows = people.slice(0, 5).map((p, i) => `<div class="lb-sq" style="--c:${SLOT_COL[i % SLOT_COL.length]}"><div class="av" ${i ? '' : `style="${faceCss(myKey())}"`}>${i ? ico('users') : ''}</div><div class="nm"><b>${i ? '' : ico('crown')}${esc(i ? p : myName())}</b><small><i></i>${i ? 'Online' : s.on ? (s.deployed ? 'In the fight' : 'In the lobby') : 'Ready'}</small></div></div>`);
     if (people.length > 5) rows.push(`<div class="lb-sq open" style="--c:rgba(255,255,255,.15)"><div class="av">${ico('users')}</div><div class="nm"><b>+${people.length - 5} MORE</b><small style="color:var(--mut)">Hold Tab in the match for the scoreboard</small></div></div>`);
     if (people.length < 8) rows.push(`<div class="lb-sq open lb-invrow" style="--c:rgba(255,255,255,.15);cursor:pointer"><div class="av">${ico('plus')}</div><div class="nm"><b>INVITE A FRIEND</b><small style="color:var(--mut)">${s.on ? `Bots fill the other ${8 - people.length} places` : 'Send a link, they land in your match'}</small></div></div>`);
     $('lbSquad').innerHTML = rows.join('');
@@ -860,13 +861,10 @@
   }
   const mySkins = () => OP_SKINS.filter(x => x.op === myOp).concat(OP_SKINS.filter(x => !x.op && !(OP_KITS[myOp] && x.id === 'standard')));
   function dock() {
-    const R = window.BoomRewards;
-    if (R) { const s = R.season(), tier = Math.min(25, Math.floor(s.sp/2500)); $('lbTier').textContent = `Tier ${tier} / 25`; $('lbTierBar').style.width = `${tier >= 25 ? 100 : Math.round(s.sp % 2500/25)}%`; }
-    try { $('lbDkLo').textContent = WEAPONS[pendingLoadout[0]].name; } catch (e) {}
-    $('lbDkOpN').textContent = opName();
-    try { const c = careerOf(xpTotal), l = mySkins(); $('lbDkSt').textContent = `${l.filter(x => skinUnlocked(x, c)).length}/${l.length} skins`; } catch (e) {}
+    try { $('lbStP').textContent = WEAPONS[pendingLoadout[0]].name; $('lbStS').textContent = WEAPONS[pendingLoadout[1]].name; } catch (e) {}
+    try { $('lbStO').textContent = `${opName()} · ${(OP_SKIN[mySkin] || OP_SKIN.standard).name}`; } catch (e) { $('lbStO').textContent = opName(); }
   }
-  function refresh() { banner(); dailyPanel(); squadPanel(); setsPanel(); dock(); refreshHero(); tagsHTML(); tags(); }
+  function refresh() { banner(); dailyPanel(); squadPanel(); setsPanel(); dock(); tagsHTML(); tags(); paint(); }
 
   // ---------------- pickers ----------------
   function sheet(title, html) {
@@ -932,8 +930,7 @@
     const on = !onlineOn(); store.set('boomOnline', on ? '1' : '0'); netErr = '';
     if (!on && joinCode) setCode(''), store.set('boomOnline', '0');
     if (on) { netCount(); if (BoomNet.mode() !== MODE) toastMsg(`ONLINE PLAYS ${MODES[BoomNet.mode()].name.toUpperCase()}`, `${MODES[MODE].name} is offline only`); }
-    else if (fillPref()) fillSquad();
-    figs(); refresh();
+    refresh();
   }
   // the game calls this whenever the connection changes (joined, roster, full, disconnected)
   function netChanged() {
@@ -951,7 +948,7 @@
       try { sessionStorage.removeItem('boomDeploy'); } catch (e) {}
     }
     if (s.on) { netErr = ''; if (s.code && s.code !== joinCode) setCode(s.code); }
-    if (open && cur === 'PLAY') { banner(); squadPanel(); setsPanel(); figs(); tags(); }
+    if (open && cur === 'PLAY') { banner(); squadPanel(); setsPanel(); tags(); }
   }
   function mapsSheet() {
     sheet('Map', `<div class="lb-cards" id="lbMaps">${MAPS().map(([id, m]) => `<button class="lb-card ${id === MAP_ID ? 'on' : ''}" data-map="${id}"><b>${ico('pin')}${m.name}</b><small>${m.desc}</small></button>`).join('')}</div>`);
@@ -1019,7 +1016,8 @@
   function opView() {
     const host = $('lbOpCv'); if (!host) return;
     if (has3D()) { const pc = pvCanvas(); host.classList.remove('art'); host.innerHTML = `<span class="hint">${esc(opName())}</span>`; host.appendChild(pc); }
-    else { host.classList.add('art'); host.innerHTML = `<img src="${ART[heroArt()].src}" alt="${esc(opName())}">`; }
+    else host.innerHTML = `<span class="hint">${esc(opName())}</span>`;
+    opFaces();
   }
   // armory: preview and equip operator skins; everything unlocks by playing
   let stF = 'all', stSel = null;
@@ -1057,7 +1055,7 @@
     if (has3D()) {
       const pc = pvCanvas(); cv.innerHTML = '<span class="hint">Preview</span>'; cv.appendChild(pc);
       try { loTab('o'); const k = mySkin; mySkin = x.id; try { updatePreview(); } finally { mySkin = k; } } catch (e) {}
-    } else { cv.classList.add('art'); cv.innerHTML = `<img src="${ART[heroArt()].src}" alt=""><div class="fab" style="background:${skinSwatch(x)}"></div>`; }
+    } else cv.innerHTML = `<div class="fab" style="background:${skinSwatch(x)}"></div>`;
   }
   function equipSkin(x) {
     if (!x || !skinUnlocked(x) || x.id === mySkin) return;
@@ -1123,7 +1121,7 @@
     else if (e.target.closest('#skins button, #prim button, #sec button')) setTimeout(dock, 0);
   }, true);
   el.querySelectorAll('#lbTabs button').forEach(b => b.onclick = () => tab(b.dataset.tab));
-  el.querySelectorAll('.lb-dk').forEach(b => b.onclick = () => tab(b.dataset.go));
+  el.querySelectorAll('.lb-strip button').forEach(b => b.onclick = () => tab(b.dataset.go));
   $('lbScrim').onclick = () => sheet(null);
   $('lbGear').onclick = () => tab('SETTINGS');
   $('lbMe').onclick = locker;
@@ -1133,24 +1131,6 @@
   $('lbMap').onclick = () => { if (netLive()) return toastMsg('THE ONLINE MATCH SETS THE MAP', 'Leave the match to pick another'); if (paused) return toastMsg('LEAVE THE MATCH TO CHANGE MAP'); mapsSheet(); };
   $('lbOnline').onclick = onlineToggle;
   $('lbNetSt').onclick = $('lbInvite').onclick = () => onlineSheet();
-  $('lbFill').onclick = () => { store.set('boomSquadFill', fillPref() ? '0' : '1'); if (fillOn()) fillSquad(); else { clearInterval(fillT); joined = 0; } figs(); squadPanel(); banner(); tags(); };
-
-  // ---------------- squad chat (your bot squadmates answer) ----------------
-  const ACKS = ['Copy that.', 'On you, lead.', 'Ready when you are.', 'Roger. Let\'s go.', 'Watch the containers.', 'I\'ll cover the flank.', 'Good luck out there.'];
-  function chatLine(who, col, text) {
-    const log = $('lbChatLog'), d = document.createElement('div');
-    d.innerHTML = `<b style="color:${col}">${esc(who)}:</b>${esc(text)}`; log.appendChild(d);
-    while (log.children.length > 5) log.firstChild.remove();
-    setTimeout(() => { d.style.opacity = 0; setTimeout(() => d.remove(), 700); }, 9000);
-  }
-  $('lbChatIn').addEventListener('keydown', e => {
-    e.stopPropagation();
-    if (e.key === 'Escape') { e.target.blur(); return; }
-    if (e.key !== 'Enter') return;
-    const v = e.target.value.trim(); e.target.value = ''; if (!v) { e.target.blur(); return; }
-    chatLine(myName(), SLOT_COL[0], v);
-    if (fillOn() && joined) { const k = Math.floor(Math.random()*Math.min(3, joined)), m = mates()[k]; setTimeout(() => chatLine(m.name, SLOT_COL[k + 1], ACKS[Math.floor(Math.random()*ACKS.length)]), 700 + Math.random()*900); }
-  });
 
   // ---------------- music: original procedural ambient loop (Am – F – C – G, 92 bpm) ----------------
   const MUS = { on: false };
@@ -1198,31 +1178,17 @@
   // ---------------- flow ----------------
   let playFn = null;
   function fadeOut(fn) { const f = $('lbFade'); f.style.opacity = 1; setTimeout(fn, 350); }
-  function fillSquad() {
-    clearInterval(fillT);
-    if (!fillOn() || joined >= 3) { joined = fillOn() ? 3 : 0; return; }
-    fillT = setInterval(() => {
-      joined++; ui(660 + joined*110, .08, .05); figs(); squadPanel(); banner(); tags();
-      if (joined >= 3) clearInterval(fillT);
-    }, 380);
-  }
   function show(o = {}) {
     paused = !!o.paused; document.body.classList.remove('ovShow'); document.body.classList.add('lbUp', 'lbOpen');
     el.classList.toggle('paused', paused);
     open = true; el.style.display = 'block'; requestAnimationFrame(() => el.classList.add('vis')); $('lbFade').style.opacity = 0;
-    use3D = want3D() && has3D();
-    if (use3D) { initView(); if (!pv) use3D = false; }
-    $('lbCanvas').style.display = use3D ? 'block' : 'none';
-    if (paused) joined = fillOn() ? 3 : 0;
-    if (use3D) { $('lbStage').innerHTML = ''; if (!squad.length || heroChanged()) build3D(); } else stageArt();
     tab(o.tab || 'PLAY');
-    if (!paused) fillSquad();
     clearInterval(tickT); tickT = setInterval(() => { if (open && cur === 'PLAY') dailyPanel(); }, 30000);
     clearInterval(netCountT); netCount(); netCountT = setInterval(() => { if (netWant()) netCount(); }, 8000);
     if (typeof AC !== 'undefined' && AC && AC.state === 'running') musStart();
-    requestAnimationFrame(frame);
+    
   }
-  function hide() { open = false; el.classList.remove('vis', 'sheet', 'scr'); el.style.display = 'none'; document.body.classList.remove('lbOpen'); clearInterval(fillT); clearInterval(tickT); clearInterval(netCountT); sheet(null); park(); cur = 'PLAY'; musStop(); }
+  function hide() { open = false; el.classList.remove('vis', 'sheet', 'scr'); el.style.display = 'none'; document.body.classList.remove('lbOpen'); unstage(); clearInterval(tickT); clearInterval(netCountT); sheet(null); park(); cur = 'PLAY'; musStop(); }
   function play(e) {
     if (!playFn) return;
     const s = ns();
@@ -1248,11 +1214,8 @@
   }
   $('lbPlay').onclick = e => play(e);
   $('lbLeave').onclick = () => { const b = $('pmLobby'); if (b) b.onclick(); };
-  window.addEventListener('resize', () => {
-    const s = isShort() ? SLOTS_SHORT : SLOTS_WIDE;
-    if (s !== SLOTS) { SLOTS = s; if (open) { if (use3D && pv) placeSquad(); else stageArt(); } }
-    if (open) tags();
-  });
+  window.addEventListener('resize', () => { placeSquad(); if (open) tags(); });
+  el.addEventListener('pointermove', e => { ST.tx = (e.clientX/innerWidth - .5)*2; ST.ty = (e.clientY/innerHeight - .5)*2; });
   // Fullscreen (F11, or F while a menu is open, since F is inspect in-game).
   function fsToggle() {
     const d = document;
@@ -1267,7 +1230,7 @@
     if (e.code === 'F11' || (e.code === 'KeyF' && inMenu && !typing)) { e.preventDefault(); fsToggle(); }
     if (!open || typing) return;
     if (e.code === 'Escape') { if (el.classList.contains('sheet')) sheet(null); else if ($('locker')) $('locker').remove(); else tab('PLAY'); }
-    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && cur === 'PLAY' && !el.classList.contains('sheet')) { e.preventDefault(); $('lbChatIn').focus(); }
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && cur === 'PLAY' && !el.classList.contains('sheet')) { e.preventDefault(); play(e); }
   });
   if ($('lbExit')) $('lbExit').onclick = () => { if (confirm('Exit Boom Arena?')) window.boomDesktop.quit(); };
   function install() {
@@ -1291,5 +1254,5 @@
   install();
   // the game's loadout preview (canvas#preview) draws while one of these screens shows it
   const preview = () => open && (cur === 'LOADOUT' || ((cur === 'OPERATORS' || cur === 'STORE') && has3D()));
-  window.BoomLobby = { show, hide, isOpen: () => open, fsToggle, tab, preview, screen: () => cur, music: () => MUS.on, mode: () => (use3D ? '3d' : 'art'), netChanged, online: onlineSheet };
+  window.BoomLobby = { show, hide, isOpen: () => open, fsToggle, tab, preview, screen: () => cur, music: () => MUS.on, mode: () => (ST.live ? '3d' : 'plain'), stage, netChanged, online: onlineSheet };
 })();

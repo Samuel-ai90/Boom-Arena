@@ -11,7 +11,7 @@
     "desktop": "electron .",
     "dist:win": "node desktop/set-online.js && electron-builder --win nsis --x64 --publish never",
     "import-operator": "node tools/import-operator.js",
-    "dist:mac": "node desktop/set-online.js && electron-builder --mac dmg --arm64 --publish never"
+    "dist:mac": "node desktop/set-online.js && desktop/build-mac.sh"
   },
   "engines": {
     "node": ">=22"

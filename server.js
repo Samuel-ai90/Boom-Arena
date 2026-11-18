@@ -26,14 +26,13 @@ const log = msg => console.log(`[${new Date().toISOString().slice(11, 19)}] ${ms
 // Web pages: only the game's own files, compressed and cached
 // =====================================================================
 const PUBLIC = { '/': 'index.html', '/index.html': 'index.html', '/shared.js': 'shared.js', '/island.js': 'island.js', '/textures-a.js': 'textures-a.js', '/br.js': 'br.js', '/rewards.js': 'rewards.js', '/lobby.js': 'lobby.js', '/mobile.js': 'mobile.js',
-  // installing the game as an app: the manifest, the offline cache and the icons
-  '/manifest.webmanifest': 'manifest.webmanifest', '/sw.js': 'sw.js' };
+};
 for (const f of ['three.min.js', 'GLTFLoader.js', 'SkeletonUtils.js', 'CopyShader.js', 'LuminosityHighPassShader.js', 'EffectComposer.js', 'ShaderPass.js', 'RenderPass.js', 'UnrealBloomPass.js']) PUBLIC['/vendor/three/' + f] = 'vendor/three/' + f;   // three.js r128 bundled locally (offline/desktop)
 for (const f of ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-64.png']) PUBLIC['/icons/' + f] = 'icons/' + f;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.webmanifest': 'application/manifest+json', '.png': 'image/png',
   '.glb': 'model/gltf-binary', '.jpg': 'image/jpeg', '.json': 'application/json', '.webp': 'image/webp', '.woff2': 'font/woff2', '.m4a': 'audio/mp4' };
 // operator models (soldier bodies) live in operators/: a list (operators.json) and one .glb per operator
-// lobby/ holds the lobby backdrop and staged operator art, fonts/ the bundled UI font (both work offline)
+// fonts/ holds the bundled UI font (works offline)
 const publicFile = url => PUBLIC[url] || (/^\/(operators|props)\/[A-Za-z0-9_-]+\.(glb|json)$/.test(url) || /^\/textures\/(1k\/[a-z0-9_]+\.webp|2k\/[a-z0-9_]+\.(webp|jpg)|hdri\/[a-z0-9_]+\.(jpg|json))$/.test(url)
   || /^\/lobby\/[a-z0-9_-]+\.(jpg|webp)$/.test(url) || /^\/fonts\/[a-z0-9_-]+\.woff2$/.test(url) || /^\/sounds\/guns\/[a-z0-9_-]+\.m4a$/.test(url) || /^\/weapons\/[a-z0-9_-]+\.glb$/.test(url) ? url.slice(1) : null);
 const fileCache = new Map();
@@ -46,9 +45,8 @@ function optionalFiles() {
   try { for (const f of fs.readdirSync(path.join(ROOT, 'textures/hdri'))) if (/\.(jpg|json)$/.test(f)) out.push('textures/hdri/' + f); } catch (e) {}
   return out;
 }
-// Build stamp: changes whenever any game file changes. It is written into sw.js (so the browser sees a new
-// service worker and drops the old cache) and into index.html (shown on the main menu).
-const STAMPED = new Set(['sw.js', 'index.html']);
+// Build stamp: changes whenever any game file changes. It is written into index.html (shown on the main menu).
+const STAMPED = new Set(['index.html']);
 const CODE_FILES = [...new Set(Object.values(PUBLIC))].filter(n => /\.(js|html|webmanifest)$/.test(n));
 function buildStamp() {
   const h = crypto.createHash('sha1');
@@ -135,7 +133,7 @@ const server = http.createServer((req, res) => {
   try { f = loadFile(name); } catch (e) { res.writeHead(500); return res.end(); }
   if (req.headers['if-none-match'] === f.etag) { res.writeHead(304, { ETag: f.etag }); return res.end(); }
   const gzip = /\bgzip\b/.test(req.headers['accept-encoding'] || '') && !/\.(png|jpg|webp|woff2)$/.test(name), body = gzip ? f.gz : f.data;   // (images and fonts are already compressed)
-  res.writeHead(200, { 'Content-Type': f.type, 'Content-Length': body.length, ETag: f.etag, 'Cache-Control': name === 'sw.js' ? 'no-store' : 'no-cache', Vary: 'Accept-Encoding', ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) });
+  res.writeHead(200, { 'Content-Type': f.type, 'Content-Length': body.length, ETag: f.etag, 'Cache-Control': 'no-cache', Vary: 'Accept-Encoding', ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) });
   res.end(req.method === 'HEAD' ? undefined : body);
 });
 

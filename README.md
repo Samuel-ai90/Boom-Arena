@@ -1,24 +1,16 @@
 # Boom Arena
 
-A fast first-person shooter in the browser: bot matches, killstreaks, Gun Game, Mini Warzone and Battle Royale.
+A fast first-person shooter for Mac: bot matches, killstreaks, Gun Game, Mini Warzone and Battle Royale.
 
-## ▶ Play now (nothing to install)
+## ⬇ Download (Mac)
 
-**https://samuel-ai90.github.io/Boom-Arena/**
+**[Download Boom Arena for Mac](https://github.com/Samuel-ai90/Boom-Arena/releases/latest/download/BoomArena-mac.dmg)** (Apple silicon: M1 or newer)
 
-Opens straight in Chrome, Edge or Safari. Single-player against bots. Press **F3** in-game for an FPS counter.
+1. Open `BoomArena-mac.dmg` and drag **Boom Arena** into **Applications**.
+2. Open Boom Arena from Applications or Launchpad. It runs full screen in its own window, no browser and no internet needed.
+3. The first time, macOS may say it can't verify the app (it isn't signed with a paid Apple developer account). Go to **System Settings › Privacy & Security**, scroll down and click **Open Anyway**. You only do this once.
 
-## ⬇ Download and play on your computer
-
-1. Click the green **Code** button above → **Download ZIP**, then unzip it.
-2. Double-click the launcher:
-   - **Mac:** `Play Boom Arena.command`
-     (the first time, macOS may block it: right-click it → **Open** → **Open**)
-   - **Windows:** `Play Boom Arena.bat`
-     (if SmartScreen appears: **More info** → **Run anyway**)
-3. The game opens in your browser at `http://localhost:8080`. Close the launcher window to stop it.
-
-The launcher uses [Node.js](https://nodejs.org) if you have it, which also lets friends on your Wi-Fi join your online matches. Without Node it falls back to Python for single-player, and with neither it opens the web version.
+All releases: https://github.com/Samuel-ai90/Boom-Arena/releases
 
 ## Controls
 
@@ -32,6 +24,8 @@ The launcher uses [Node.js](https://nodejs.org) if you have it, which also lets 
 | Melee / armor plate | V / X |
 | Scoreboard / map | Tab / M |
 | FPS counter | F3 |
+| Full screen on / off | F11 |
+| Quit | Cmd+Q, or the power button in the lobby |
 
 Every key can be changed in **Settings › Controls**. Controllers work too.
 
@@ -39,9 +33,13 @@ Every key can be changed in **Settings › Controls**. Controllers work too.
 
 The game tests your computer the first time it loads and picks the best look that holds your screen's refresh rate. You can choose a preset yourself in **Settings › Display**.
 
-## Hosting online matches
+## Building the app
 
-Run `node server.js` (Node.js 22 or newer). Players on the same network join at the address it prints. See `render.yaml` to host it on Render.
+`desktop/build-mac.sh` builds `dist/Boom Arena.app` and `dist/BoomArena-mac.dmg` from this folder (it needs Electron 33: `npm install electron@33.4.11` in any folder, then point `ELECTRON_APP` at its `node_modules/electron/dist/Electron.app`). `--install` also copies the app to Applications.
+
+## Online match server
+
+`node server.js` (Node.js 22 or newer) runs the online match server on its own; see `render.yaml` to host it on Render.
 
 ## Credits
 
@@ -51,3 +49,6 @@ Run `node server.js` (Node.js 22 or newer). Players on the same network join at 
 - M9 model: ["Beretta M9"](https://sketchfab.com/3d-models/beretta-m9-d1200d9aa28f466484f7d3fdd7724e76) by [emran.bayati](https://sketchfab.com/emran.bayati), CC-BY-4.0 (spare magazine hidden, textures resized).
 - M870 model: ["Remington 870 Police Magnum 12 Gauge Shotgun"](https://sketchfab.com/3d-models/remington-870-police-magnum-12-gauge-shotgun-eea11de7e9d24b6683962b8388c319eb) by 8sianDude ([haoliu95](https://sketchfab.com/haoliu95)), CC-BY-4.0 (loose shells removed, textures resized).
 - M249 model: ["M249"](https://sketchfab.com/3d-models/m249-9b4c19512e6749248704ff5a5b6d4421) by [Chipotle0303](https://sketchfab.com/Chipotle0303), CC-BY-4.0 (textures resized).
+- Soldier: infantry soldier model by Grab3D (CC0, AI-assisted mesh cleaned up by hand), on the skeleton and idle / walk / jog / sprint animations of the [Universal Animation Library](https://quaternius.com) by Quaternius (CC0).
+- World props (ammo crates, oil drums, jersey barriers, tyres, gas bottles, generator, utility box): photo-scanned models from [Poly Haven](https://polyhaven.com/models) (CC0), simplified and resized for the game: wooden_military_crate, old_military_crate, concrete_road_barrier, Barrel_01, Barrel_02, barrel_03, old_tyre, propane_tank, utility_box_02, portable_generator.
+- App shell: [Electron](https://www.electronjs.org) (MIT licence; Electron and Chromium licences are inside the app).

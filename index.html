@@ -5,11 +5,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Boom Arena</title>
-<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#121830">
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Boom Arena">
@@ -448,7 +445,7 @@
     <div class="settings">
       <span>Graphics</span><div class="seg" id="qual"><button data-q="auto">Auto</button><button data-q="extreme">Ultra</button><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="mobile">Mobile</button><button data-q="low">Low</button></div>
     </div>
-    <div class="menurow"><button id="openSettings" class="ghost" style="display:none">⚙ Settings &amp; controls</button><button id="installBtn" class="ghost" style="display:none">⬇ Install app</button><button id="fsBtn" class="ghost">⛶ Fullscreen</button></div>
+    <div class="menurow"><button id="openSettings" class="ghost" style="display:none">⚙ Settings &amp; controls</button><button id="fsBtn" class="ghost">⛶ Fullscreen</button></div>
     <div class="lbl ml">Online</div>
     <div class="netrow"><input id="netName" maxlength="14" placeholder="Your name"><input id="netAddr" placeholder="Server address"><button id="netJoin" class="ghost">Play Online</button></div>
     <div class="netnote" id="netStatus"></div>
@@ -559,7 +556,7 @@ const MAP_INFO = {
     sun: [-.62, .34, -.7], sky: [0x2c5ba6, 0x88b0d8, 0xffcf9e, 0x6b5f50], fog: [0xf0c9a0, .0085], sunCol: [0xffd2a0, 3.45], hemi: [0xa9c6ff, 0x5d4a33],
     grass: 1.15, noGrass: [[-7.3, -7.3, 7.3, 7.3], [-1.6, -40, 1.6, 40], [-40, -1.6, 40, 1.6]], trees: true, pines: .6,
     puddles: [[.4, 10], [-.6, 21], [11, -.5], [-23, .8], [.3, -27], [20, .6], [-9, -.4], [.8, -11], [-29, -11], [26, -24], [-17, 27], [9.5, 31]],
-    spawns: [[-30,-30],[30,-30],[-30,30],[30,30],[0,-30],[0,30],[-30,0],[30,0],[-15,-22],[15,22],[22,-15],[-22,15]] },
+    spawns: [[-30,-30],[30,-30],[-30,30],[30,30],[0,-30],[0,30],[-30,0],[30,0],[-15,-22],[15,22],[22,-15],[-22,15]], spread: 1.2 },
   suburbia: { name: 'Suburbia', desc: 'Two houses face off across the street. Fight room to room and dive through windows.', size: 30, ground: 'grass', hills: .8, hdri: 'day',
     sun: [.5, .55, -.45], sky: [0x2a64c2, 0x7fb2e8, 0xd8e6f0, 0x6b6a5a], fog: [0xcfe0ec, .0055], sunCol: [0xfff1dc, 3.4], hemi: [0xb8d4ff, 0x5a5440],
     grass: .9, noGrass: [[-40, -5.6, 40, 5.6], [-10.4, -10.5, -8.6, -5.6], [8.6, 5.6, 10.4, 10.5], [13.4, -14.2, 17, -5.6], [-17, 5.6, -13.4, 14.2]], trees: true, pines: .25,
@@ -569,24 +566,24 @@ const MAP_INFO = {
     sun: [.7, .2, .45], sky: [0x3a3f7a, 0xd88a5a, 0xffb070, 0x7a5a40], fog: [0xf0b080, .009], sunCol: [0xffa860, 3.0], hemi: [0xffc8a0, 0x6a4a30],
     grass: .3, dry: true, noGrass: [], trees: false, rocks: true, pines: 0,
     puddles: [],
-    spawns: [[-28,-28],[28,-28],[-28,28],[28,28],[0,-27],[0,27],[-28,-2],[28,-6]] },
+    spawns: [[-28,-28],[28,-28],[-28,28],[28,28],[0,-27],[0,27],[-28,-2],[28,-6]], spread: 1.2 },
   dockyard: { name: 'Dockyard', desc: 'A tight maze of shipping containers on the quay. Fast, close and chaotic.', size: 24, ground: 'concrete', hills: 0, hdri: 'overcast',
     sun: [-.3, .5, .75], sky: [0x4a6a8f, 0x9fb4c8, 0xdfe4e6, 0x50585e], fog: [0xc8d2d8, .011], sunCol: [0xfff4e6, 2.6], hemi: [0xc8d8ec, 0x50585e],
     grass: 0, noGrass: [], trees: false, pines: 0,
     puddles: [[-12, -3], [3, 6.5], [10, -11], [-3, 15], [18, 7], [-20, 6], [7, -20], [-1, -11.5]],
-    spawns: [[-21,21],[21,21],[0,22.5],[-22,-12],[22,-2],[-8,-21],[10,-22.5],[-22,6]] },
+    spawns: [[-21,21],[21,21],[0,22.5],[-22,-12],[22,-2],[-8,-21],[10,-22.5],[-22,6]], spread: 1.2 },
   // compact party arenas with map features: jump pads (pads: [x, z, radius, launch speed]) and hazards (hazards: [x, z, w, d, dps])
   skyline: { name: 'Skyline', desc: 'Neon rooftops at dusk: jump pads launch you onto towers, a two-level core and long sightlines.', size: 22, ground: 'concrete', hills: 0, hdri: 'sunset',
     sun: [.45, .22, -.8], sky: [0x241a4a, 0x7a4a9a, 0xff8a7a, 0x3a3048], fog: [0x8a6aa0, .012], sunCol: [0xff9a8a, 2.6], hemi: [0xb0a0ff, 0x40384a],
     grass: 0, noGrass: [], trees: false, pines: 0, puddles: [[-6, 8], [9, -4]],
-    pads: [[-8.4, -13, 1.1, 17], [8.4, -13, 1.1, 17], [-8.4, 13, 1.1, 17], [8.4, 13, 1.1, 17]],
-    spawns: [[-18,-18],[18,-18],[-18,18],[18,18],[0,-19],[0,19],[-19,0],[19,0]] },
+    pads: [[-8.4, -13, 1.1, 17, -13, -13], [8.4, -13, 1.1, 17, 13, -13], [-8.4, 13, 1.1, 17, -13, 13], [8.4, 13, 1.1, 17, 13, 13]],   // (each pad belongs to the tower at its last two numbers)
+    spawns: [[-18,-18],[18,-18],[-18,18],[18,18],[0,-19],[0,19],[-19,0],[19,0]], spread: 1.2 },
   foundry: { name: 'Foundry', desc: 'A steelworks with glowing acid vats: cross the bridges or take the catwalks, and don\'t fall in.', size: 22, ground: 'sand', hills: 0, hdri: 'sunset',
     sun: [-.4, .3, .7], sky: [0x3a2a24, 0xa0603a, 0xffb060, 0x50382a], fog: [0xc08050, .013], sunCol: [0xffb070, 2.8], hemi: [0xffc090, 0x503020],
     grass: 0, dry: true, noGrass: [], trees: false, rocks: false, pines: 0, puddles: [],
     pads: [[-10.6, 0, 1, 13], [10.6, 0, 1, 13]],
     hazards: [[-6, 0, 5, 9, 40], [6, 0, 5, 9, 40]],
-    spawns: [[-18,-18],[18,-18],[-18,18],[18,18],[0,-19],[0,19],[-19,-8],[19,8]] },
+    spawns: [[-18,-18],[18,-18],[-18,18],[18,18],[0,-19],[0,19],[-19,-8],[19,8]], spread: 1.2 },
   // the Battle Royale island (island.js): only ever played in Battle Royale
   island: { name: 'Crestfall Island', desc: 'Battle Royale island, about a kilometre across: a city, towns, an airfield, a port and more, ringed by sea.', size: 512, ground: 'island', hills: 0, hdri: 'day',
     sun: [-.5, .55, -.62], sky: [0x2b62b8, 0x86b6e6, 0xffe2bc, 0x6a6650], fog: [0xd2e0ea, .0012], sunCol: [0xfff0d8, 3.3], hemi: [0xb4d0ff, 0x5c5340],
@@ -604,6 +601,17 @@ if (!BR_ENABLED && store.get('boomMode', 'ffa') === 'br') store.set('boomMode', 
 const _realRandom = Math.random;
 Math.random = (seed => () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; })([...MAP_ID].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261));
 const MAPDEF = MAP_INFO[MAP_ID];
+// Maps are laid out on their original plan and then opened up by `spread`: every free-standing thing (and every
+// compound wrapped in grp() below) keeps its own shape and moves out from the map centre, so lanes get wider and
+// sightlines longer without anything being stretched. The plan's own lists move the same way.
+const SPREAD = MAPDEF.spread || 1;
+if (SPREAD !== 1) {
+  MAPDEF.size = Math.round(MAPDEF.size*SPREAD);
+  MAPDEF.spawns = MAPDEF.spawns.map(([x, z]) => [x*SPREAD, z*SPREAD]);
+  MAPDEF.puddles = (MAPDEF.puddles || []).map(([x, z]) => [x*SPREAD, z*SPREAD]);
+  MAPDEF.noGrass = (MAPDEF.noGrass || []).map(r => r.map(v => v*SPREAD));
+  if (MAPDEF.pads) MAPDEF.pads = MAPDEF.pads.map(([x, z, r, v, ax = 0, az = 0]) => [x + ax*(SPREAD - 1), z + az*(SPREAD - 1), r, v]);
+}
 const ARENA = MAPDEF.size, RESPAWN = 3, R = 0.4;
 let KILLS_TO_WIN = S.scoreLimit, MATCH_TIME = S.timeLimit*60;
 const SUN_DIR = V(...MAPDEF.sun).normalize();
@@ -1228,10 +1236,16 @@ C.wood = mk(256, 0, (g, s) => {
   }
   g.globalAlpha = 1;
 });
+// uniform cloth for your own sleeves: the same pixel camo the soldier wears (sage, olive and dark flecks on a weave)
 C.camo = mk(256, 0, (g, s) => {
-  g.fillStyle = '#4d5236'; g.fillRect(0, 0, s, s);
-  blobs(g, s, 70, ['#3a3e28','#62664a','#2e301f','#6f6a4f'], 8, 26, .8);
-  for (let y = 0; y < s; y += 2) { g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, y, s, 1); }
+  g.fillStyle = '#7d846c'; g.fillRect(0, 0, s, s);
+  const px = 8;
+  for (const [col, n, lo, hi] of [['#9aa189', 150, 1, 4], ['#5d6550', 130, 1, 4], ['#454b3a', 70, 1, 3], ['#a9ae98', 40, 1, 2]]) {
+    g.fillStyle = col;
+    for (let i = 0; i < n; i++) { const w = Math.round(rand(lo, hi))*px, h = Math.round(rand(lo, hi - 1))*px, x = Math.floor(rand(0, s/px))*px, y = Math.floor(rand(0, s/px))*px; g.fillRect(x, y, w, h); g.fillRect(x - s, y, w, h); g.fillRect(x, y - s, w, h); }
+  }
+  for (let y = 0; y < s; y += 2) { g.fillStyle = 'rgba(0,0,0,.07)'; g.fillRect(0, y, s, 1); }
+  for (let x = 0; x < s; x += 2) { g.fillStyle = 'rgba(255,255,255,.03)'; g.fillRect(x, 0, 1, s); }
 });
 C.stipple = mk(128, 0, (g, s) => { g.fillStyle = '#808080'; g.fillRect(0, 0, s, s); specks(g, s, s, 3000, ['#000','#fff'], 1); });
 C.blade = mk(256, 0, (g, s) => {
@@ -1990,14 +2004,108 @@ async function furnishInteriors() {
 }
 
 // ---- props ----
+// Photo-scanned props (Poly Haven, CC0: see the README credits). The map builders still lay down the same collision
+// boxes; where a scanned model is installed they record where it goes instead of building the procedural boxes, and
+// loadRealProps() then draws each model as instanced meshes: one draw call per model per ~15 m map cell (so cells
+// off screen are culled), all in the cached static shadow pass. Models are simplified offline to 1-4k triangles.
+// size: the model's own [x, y, z] in metres (origin at its bottom centre). If a file fails to load, the procedural
+// version is built instead. Low / Mobile quality keep the procedural props.
+const PROP = {
+  crateMil: { file: 'props/real_crate_mil.glb', size: [1.242, .465, .520] },
+  crateOld: { file: 'props/real_crate_old.glb', size: [.805, .301, .467] },
+  barrier:  { file: 'props/real_barrier.glb', size: [1.545, .831, .639] },
+  barrelA:  { file: 'props/real_barrel_a.glb', size: [.563, .880, .563] },
+  barrelB:  { file: 'props/real_barrel_b.glb', size: [.488, .880, .485] },
+  barrelC:  { file: 'props/real_barrel_c.glb', size: [.634, .930, .639] },
+  tyre:     { file: 'props/real_tyre.glb', size: [.600, .600, .165], solid: false },
+  propane:  { file: 'props/real_propane.glb', size: [.337, .554, .337] },
+  utility:  { file: 'props/real_utility.glb', size: [.920, 1.120, .432] },
+  generator: { file: 'props/real_generator.glb', size: [.818, .577, .564], solid: false },
+};
+const PROPS_ON = store.get('boomProps', 'on') !== 'off' && !MAPDEF.br && QUALITY !== 'low' && QUALITY !== 'mobile' && /^https?:$/.test(location.protocol) && Array.isArray(window.BOOM_HAS);
+const propOn = (...kinds) => PROPS_ON && kinds.every(k => boomHas(PROP[k].file));
+const PROP_SPOTS = {}, PROP_CLASSIC = {}, _propObj = new THREE.Object3D();
+const PROP_DEPTH = new THREE.MeshBasicMaterial({ colorWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 });
+const prand = (x, z, k = 0) => { const v = Math.sin(x*12.9898 + z*78.233 + k*37.719)*43758.5453; return v - Math.floor(v); };   // stable per place, so every player sees the same pile
+// one instance: bottom centre at (x, y, z), turned by yaw (and tilt, for things lying down), scaled per model axis; tint: brightness variation
+function propPut(kind, x, y, z, yaw, sx, sy, sz, tint = 1, rx = 0, rz = 0) {
+  _propObj.position.set(x, y, z); _propObj.rotation.set(rx, yaw, rz, 'YXZ'); _propObj.scale.set(sx, sy, sz); _propObj.updateMatrix();
+  (PROP_SPOTS[kind] = PROP_SPOTS[kind] || []).push({ m: _propObj.matrix.clone(), cell: Math.floor(x/15) + ',' + Math.floor(z/15), tint, r: Math.hypot(PROP[kind].size[0]*sx, PROP[kind].size[1]*sy, PROP[kind].size[2]*sz) });
+}
+// the procedural version of whatever was replaced, kept in case a model can't be loaded
+function propClassic(kinds, build) {   // (built later, only if the scans fail to load: it lands where its group went)
+  const dx = GRP.dx, dz = GRP.dz, at = () => { const n0 = scene.children.length; build(); if (dx || dz) grpShift(n0, dx, dz); };
+  for (const k of kinds) (PROP_CLASSIC[k] = PROP_CLASSIC[k] || []).push(at);
+}
+function loadRealProps() {
+  const kinds = Object.keys(PROP_SPOTS); if (!kinds.length) return Promise.resolve(0);
+  const loader = new THREE.GLTFLoader(), _v = new THREE.Vector3(), col = new THREE.Color(), failed = new Set();
+  return Promise.all(kinds.map(kind => new Promise(res => loader.load(PROP[kind].file, gl => {
+    const parts = []; gl.scene.updateMatrixWorld(true);
+    gl.scene.traverse(o => { if (o.isMesh) { o.geometry.applyMatrix4(o.matrixWorld); parts.push(o); for (const k of ['map', 'normalMap', 'roughnessMap']) if (o.material[k]) o.material[k].anisotropy = Math.min(8, MAXANISO); o.material.envMapIntensity = .6; if (PROP[kind].solid !== false) o.material.side = THREE.FrontSide; } });
+    const cells = new Map(); for (const sp of PROP_SPOTS[kind]) { if (!cells.has(sp.cell)) cells.set(sp.cell, []); cells.get(sp.cell).push(sp); }
+    let n = 0;
+    for (const list of cells.values()) {
+      const sphere = new THREE.Sphere(), box = new THREE.Box3();
+      for (const sp of list) { _v.setFromMatrixPosition(sp.m); box.expandByPoint(_v); }
+      box.getCenter(sphere.center); sphere.radius = 0;
+      for (const sp of list) sphere.radius = Math.max(sphere.radius, _v.setFromMatrixPosition(sp.m).distanceTo(sphere.center) + sp.r);
+      for (const part of parts) {
+        // its own geometry object (sharing the vertex buffers) so this cell gets its own bounds for culling
+        const g = new THREE.BufferGeometry(); for (const a in part.geometry.attributes) g.setAttribute(a, part.geometry.attributes[a]);
+        g.setIndex(part.geometry.index); g.boundingSphere = sphere.clone(); g.boundingBox = new THREE.Box3().setFromCenterAndSize(sphere.center, _v.setScalar(sphere.radius*2));
+        const im = new THREE.InstancedMesh(g, part.material, list.length);
+        list.forEach((sp, i) => { im.setMatrixAt(i, sp.m); im.setColorAt(i, col.setScalar(sp.tint)); });
+        im.instanceMatrix.needsUpdate = true; im.receiveShadow = true; im.castShadow = true;
+        im.frustumCulled = true;   // (three turns culling off for instanced meshes; this cell's bounds are set above)
+        scene.add(im); n++;
+        // depth pre-pass twin (same geometry and instance buffer, drawn first, depth only): crates in a pile overlap
+        // each other on screen, and this way the lighting shader runs once per pixel instead of once per layer
+        const pre = new THREE.InstancedMesh(g, PROP_DEPTH, list.length); pre.instanceMatrix = im.instanceMatrix;
+        pre.frustumCulled = true; pre.renderOrder = -1; pre.castShadow = pre.receiveShadow = false; scene.add(pre);
+        if (SHC.statics) { SHC.statics.push(im); im.castShadow = false; SHC.ready = false; renderer.shadowMap.needsUpdate = true; }   // into the cached static shadows
+      }
+    }
+    res(n);
+  }, undefined, () => { failed.add(kind); res(0); })))).then(r => {
+    const done = new Set(); for (const k of failed) for (const b of PROP_CLASSIC[k] || []) if (!done.has(b)) { done.add(b); b(); }
+    return r.reduce((a, b) => a + b, 0);
+  });
+}
+// Fill a w x h x d box with real crates: pick the row counts (and which way the crates run) that keep each crate
+// closest to its true proportions, cross-stack alternate layers on square piles, and skip crates buried inside.
+function propCrates(x, z, w, d, h, y0, classic) {
+  const kind = prand(x, z) < .3 ? 'crateOld' : 'crateMil';
+  if (!propOn(kind)) return false;
+  const [mx, my, mz] = PROP[kind].size, S = kind === 'crateMil' ? 1.3 : 1.75;
+  const fit = alongX => { const L = alongX ? w : d, A = alongX ? d : w, nl = Math.max(1, Math.round(L/(mx*S))), na = Math.max(1, Math.round(A/(mz*S)));
+    const sl = L/nl/mx, sa = A/na/mz; return { alongX, nl, na, sl, sa }; };
+  const ny = Math.max(1, Math.round(h/(my*S))), ch = h/ny, sy = ch/my;
+  const dist = f => Math.max(f.sl, f.sa, sy)/Math.min(f.sl, f.sa, sy);
+  let a = fit(true), b = fit(false); if (dist(b) < dist(a) - 1e-6 || (Math.abs(dist(a) - dist(b)) < 1e-6 && prand(x, z, 1) < .5)) [a, b] = [b, a];
+  const cross = dist(b) < dist(a)*1.3;
+  for (let k = 0; k < ny; k++) {
+    const f = cross && k % 2 ? b : a, cl = (f.alongX ? w : d)/f.nl, ca = (f.alongX ? d : w)/f.na;
+    for (let i = 0; i < f.nl; i++) for (let j = 0; j < f.na; j++) {
+      if (k < ny - 1 && i > 0 && i < f.nl - 1 && j > 0 && j < f.na - 1) continue;   // buried: never seen
+      const l = -((f.alongX ? w : d)/2) + cl*(i + .5), t = -((f.alongX ? d : w)/2) + ca*(j + .5), q = i*31 + j*17 + k*7;
+      const px = x + (f.alongX ? l : t), pz = z + (f.alongX ? t : l), jit = k > 0 ? (prand(px, pz, q) - .5)*.035 : 0;
+      propPut(kind, px, y0 + k*ch, pz, (f.alongX ? 0 : Math.PI/2) + (prand(px, pz, q + 1) < .5 ? Math.PI : 0) + jit,
+        (cl - .02)/mx, (ch - .004)/my, (ca - .02)/mz, .82 + .26*prand(px, pz, q + 2));
+    }
+  }
+  propClassic([kind], classic);
+  return true;
+}
 function crateStack(x, z, w, d, h, y0 = 0) {
   solid(x, z, w, d, h, 'wood', false, y0);
   const nx = Math.max(1, Math.round(w/1.4)), nz = Math.max(1, Math.round(d/1.4)), ny = Math.max(1, Math.round(h/1.15));
   const cw = w/nx, cd = d/nz, ch = h/ny;
-  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) for (let k = 0; k < ny; k++) {
+  const classic = () => { for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) for (let k = 0; k < ny; k++) {
     const m = mesh(new THREE.BoxGeometry(cw - .03, ch - .015, cd - .03), MAT.crate[(i + j + k) % 2 ^ (Math.random() < .3)], x - w/2 + cw*(i + .5), y0 + ch*(k + .5), z - d/2 + cd*(j + .5));
     if (k > 0) m.rotation.y = rand(-.04, .04);
-  }
+  } };
+  if (!propCrates(x, z, w, d, h, y0, classic)) classic();
 }
 function container(x, z, w, d, h, ci, y0 = 0, o = {}) {
   solid(x, z, w, d, h, 'metal', false, y0, o);
@@ -2028,18 +2136,36 @@ const barrelMats = [0xb8392b, 0x2b62b8, 0xd8a02a, 0x3d8a4a].map(c => heightAO(ne
 function barrels(x, z, w, d, h) {
   solid(x, z, w, d, h, 'metal', true);
   const r = Math.min(w, d)/4 - .03;
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+  const classic = () => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const bx = x + sx*w/4, bz = z + sz*d/4, mat = barrelMats[Math.floor(Math.random()*4)];
     const b = mesh(new THREE.CylinderGeometry(r, r, h, 24), mat, bx, h/2, bz); b.rotation.y = rand(0, 6);
     for (const y of [h*.33, h*.66]) { const ring = mesh(new THREE.TorusGeometry(r + .004, .018, 6, 28), mat, bx, y, bz); ring.rotation.x = Math.PI/2; }
     mesh(new THREE.CylinderGeometry(r - .02, r - .02, .02, 24), MAT.metalDark, bx, h + .005, bz);
+  } };
+  if (!propOn('barrelA', 'barrelB', 'barrelC')) return classic();
+  // real drums: steel (red hazard / blue) and a blue plastic one, a little squat to match the cover they give
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const bx = x + sx*w/4, bz = z + sz*d/4, pk = prand(bx, bz), kind = pk < .4 ? 'barrelA' : pk < .75 ? 'barrelC' : 'barrelB', [mx, my] = PROP[kind].size;
+    propPut(kind, bx, 0, bz, prand(bx, bz, 1)*6.283, 2*r/mx, h/my, 2*r/mx, .9 + .15*prand(bx, bz, 2));
   }
+  propClassic(['barrelA', 'barrelB', 'barrelC'], classic);
 }
 // low concrete jersey barrier you can vault
 function barrier(x, z, len, axis) {
-  axisBlock(axis, axis === 'x' ? x : z, 0, axis === 'x' ? z : x, len, .95, .55, MAT.concrete, 'concrete', { vaultOnly: true, tile: 1.5 });
-  axisBox(axis, axis === 'x' ? x : z, .12, axis === 'x' ? z : x, len + .02, .24, .75, MAT.concreteDark);
-  axisBox(axis, axis === 'x' ? x : z, .7, axis === 'x' ? z : x, len + .02, .16, .57, MAT.hazard);
+  const along = axis === 'x' ? x : z, c = axis === 'x' ? z : x;
+  if (propOn('barrier')) {   // real jersey barriers, end to end along the same collision box
+    axisBlock(axis, along, 0, c, len, .95, .55, null, 'concrete', { vaultOnly: true });
+    const [mx, my, mz] = PROP.barrier.size, n = Math.max(1, Math.round(len/1.45)), seg = len/n;
+    for (let i = 0; i < n; i++) {
+      const a = along - len/2 + seg*(i + .5), px = axis === 'x' ? a : c, pz = axis === 'x' ? c : a;
+      propPut('barrier', px, 0, pz, (axis === 'x' ? 0 : Math.PI/2) + (prand(px, pz) < .5 ? Math.PI : 0) + (prand(px, pz, 1) - .5)*.03, (seg - .015)/mx, .95/my, .62/mz, .9 + .14*prand(px, pz, 2));
+    }
+    propClassic(['barrier'], () => { axisBox(axis, along, .475, c, len, .95, .55, MAT.concrete); });
+    return;
+  }
+  axisBlock(axis, along, 0, c, len, .95, .55, MAT.concrete, 'concrete', { vaultOnly: true, tile: 1.5 });
+  axisBox(axis, along, .12, c, len + .02, .24, .75, MAT.concreteDark);
+  axisBox(axis, along, .7, c, len + .02, .16, .57, MAT.hazard);
 }
 function sandbags(x, z, len, axis, h = 1.05) {
   axisBlock(axis, axis === 'x' ? x : z, 0, axis === 'x' ? z : x, len, h, .7, MAT.sandbag, 'dirt', { vaultOnly: true, tile: 1 });
@@ -2167,6 +2293,31 @@ function tank(x, z, r, h) {
   for (let i = 0; i < 9; i++) mesh(new THREE.BoxGeometry(.5, .04, .04), MAT.yellow, x + r + .08, .5 + i*(h - .8)/8, z);
 }
 
+// ---- Opening a map up (see SPREAD): whatever fn builds is one rigid group, anchored at (ax, az) on the plan. When it
+// is done the group moves out to where that anchor lands on the opened-up map: its meshes, its colliders, its scanned
+// props and its interior spots together. Groups don't nest: inside one, everything belongs to it. ----
+const GRP = { depth: 0, dx: 0, dz: 0 };
+function grpShift(n0, dx, dz) { for (let i = n0; i < scene.children.length; i++) { const o = scene.children[i]; o.position.x += dx; o.position.z += dz; } }
+function grp(ax, az, fn) {
+  if (GRP.depth || SPREAD === 1) { GRP.depth++; try { return fn(); } finally { GRP.depth--; } }
+  const n0 = scene.children.length, b0 = boxes.length, i0 = INTERIOR_SPOTS.length, p0 = {}; for (const k in PROP_SPOTS) p0[k] = PROP_SPOTS[k].length;
+  const dx = GRP.dx = ax*(SPREAD - 1), dz = GRP.dz = az*(SPREAD - 1);
+  GRP.depth++; let r; try { r = fn(); } finally { GRP.depth--; GRP.dx = GRP.dz = 0; }
+  if (!dx && !dz) return r;
+  grpShift(n0, dx, dz);
+  for (let i = b0; i < boxes.length; i++) { const b = boxes[i]; b.minX += dx; b.maxX += dx; b.minZ += dz; b.maxZ += dz; }
+  for (let i = i0; i < INTERIOR_SPOTS.length; i++) { INTERIOR_SPOTS[i].x += dx; INTERIOR_SPOTS[i].z += dz; }
+  for (const k in PROP_SPOTS) for (let i = p0[k] || 0; i < PROP_SPOTS[k].length; i++) { const sp = PROP_SPOTS[k][i], e = sp.m.elements; e[12] += dx; e[14] += dz; sp.cell = Math.floor(e[12]/15) + ',' + Math.floor(e[14]/15); }
+  return r;
+}
+// things that stand on their own are each their own group, anchored where they are placed
+for (const name of ['crateStack', 'container', 'bunker', 'barrels', 'barrier', 'sandbags', 'car', 'van', 'tree', 'bush', 'lampPost', 'windowWall', 'tower', 'tank']) {
+  const f = window[name]; window[name] = (x, z, ...rest) => grp(x, z, () => f(x, z, ...rest));
+}
+{ const f = window.building; window.building = o => grp(o.cx, o.cz, () => f(o)); }
+// (colliders were filed in the lookup grid where they were first built)
+function rebinBoxes() { bins.clear(); for (const b of boxes) binBox(b); }
+
 // =====================================================================
 // Map definitions
 // =====================================================================
@@ -2180,7 +2331,7 @@ BUILD.yard = () => {
     mesh(tiledBox(w + .06, .5, d + .06, 2), MAT.concreteDark, x, .25, z);
   }
   let li = 0;
-  for (const t of [-25.5, -17, -8.5, 0, 8.5, 17, 25.5]) {
+  for (const t of [-25.5, -17, -8.5, 0, 8.5, 17, 25.5].map(v => v*SPREAD)) {
     for (const [x, z, w, d, nx, nz] of [[t, -ARENA+.2, 1.3, .4, 0, 1], [t, ARENA-.2, 1.3, .4, 0, -1], [-ARENA+.2, t, .4, 1.3, 1, 0], [ARENA-.2, t, .4, 1.3, -1, 0]]) {
       block(x, 0, z, w, H + .3, d, MAT.brick, 'concrete', { noMantle: true, tile: 2.2 });
       mesh(tiledBox(w + .15, .2, d + .15, 1), MAT.concreteDark, x, H + .4, z);
@@ -2213,6 +2364,18 @@ BUILD.yard = () => {
   graffitiOn('x', -26, 2.2, -ARENA, 1, 3, 0); graffitiOn('z', 20, 2.2, ARENA, -1, 3, 2);
   crateStack(-4.5, 4.5, 1.6, 1.6, 1.2); crateStack(4.5, -4.5, 1.6, 1.6, 1.2);
   for (const [x, z, ax] of [[8, 27, 'x'], [-8, -27, 'x'], [27, -4, 'z'], [-27, 4, 'z'], [0, 22, 'x'], [0, -22, 'x'], [22, 0, 'z'], [-22, 0, 'z']]) barrier(x, z, 2.6, ax);
+  // set dressing (scanned props, no collision): tucked against the perimeter wall and the bunkers, out of the lanes
+  if (propOn('tyre', 'propane', 'utility', 'generator')) for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const tyreFlat = (cx, cz, y, k) => { const yaw = prand(cx, cz, k)*6.283, o = .345; propPut('tyre', cx - Math.sin(yaw)*o, y, cz - Math.cos(yaw)*o, yaw, 1.15, 1.15, 1.15, .9 + .15*prand(cx, cz, k + 3), Math.PI/2); };
+    const tx = 26.2*sx, tz = (ARENA - .55)*sz;
+    for (let k = 0; k < 3; k++) tyreFlat(tx + (prand(tx, tz, k) - .5)*.07, tz + (prand(tx, tz, k + 7) - .5)*.07, .095 + k*.19, k);
+    tyreFlat(tx - .85*sx, tz - .05*sz, .095, 4);
+    const bx = 26*(SPREAD - 1), bz = 12*(SPREAD - 1);   // (they lean on the bunker, which moved out with the map)
+    propPut('propane', (27.82 + bx)*sx, 0, (10.9 + bz)*sz, prand(sx, sz, 1)*6.283, 1.25, 1.25, 1.25);
+    propPut('propane', (27.86 + bx)*sx, 0, (11.42 + bz)*sz, prand(sx, sz, 2)*6.283, 1.25, 1.25, 1.25, .92);
+    propPut('generator', (ARENA - .44)*sx, 0, 16.2*sz, sx > 0 ? -Math.PI/2 : Math.PI/2, 1.2, 1.2, 1.2);
+    propPut('utility', 21.2*sx, 0, (ARENA - .27)*sz, sz > 0 ? Math.PI : 0, 1.15, 1.15, 1.15);
+  }
 };
 BUILD.suburbia = () => {
   const A = ARENA;
@@ -2273,8 +2436,9 @@ BUILD.outpost = () => {
   // corrugated metal perimeter
   for (const [x, z, w, d] of [[0, -A - .3, A*2 + 1, .6], [0, A + .3, A*2 + 1, .6], [-A - .3, 0, .6, A*2], [A + .3, 0, .6, A*2]])
     block(x, 0, z, w, 3.6, d, MAT.rustWall, 'metal', { noMantle: true, tile: 2.6 });
-  // central derrick platform with stairs and a catwalk
+  // central derrick platform with stairs and a catwalk (one compound with the control building: it stays put)
   const DY = 4.0;
+  grp(0, 0, () => {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) block(sx*3, 0, sz*3, .4, DY - .25, .4, MAT.yellow, 'metal', { tile: 1 });
   block(0, DY - .25, 0, 6.6, .25, 6.6, MAT.grate, 'metal', { tile: 1.5 });
   railing('x', -3.3, 3.3, -3.25, DY); railing('z', -3.3, -.7, 3.25, DY); railing('z', .7, 3.3, 3.25, DY); railing('z', -3.3, 3.3, -3.25, DY);
@@ -2291,12 +2455,11 @@ BUILD.outpost = () => {
   railing('x', 3.3, 11, -.63, DY); railing('x', 3.3, 11, .63, DY);
   for (const x of [6, 9]) block(x, 0, 0, .3, DY - .25, .3, MAT.yellow, 'metal', { tile: 1 });
   block(13, 0, -2.2, 1.6, .8, .7, MAT.metal, 'metal', { tile: 1, vaultOnly: true }); block(16.5, 0, 2.3, 2.2, .8, .7, MAT.metal, 'metal', { tile: 1, vaultOnly: true });
+  });
   // stacked container lookout
-  container(-21, 4, 2.4, 6, 2.6, 1);
-  stairRun(-19.2, 8.0, 'z', -1, 1.2, 0, 2.6, MAT.grate);
-  crateStack(-21, 2.3, 1.4, 1.4, 1.2, 2.6);
+  grp(-21, 4, () => { container(-21, 4, 2.4, 6, 2.6, 1); stairRun(-19.2, 8.0, 'z', -1, 1.2, 0, 2.6, MAT.grate); crateStack(-21, 2.3, 1.4, 1.4, 1.2, 2.6); });
   // pipes, tanks, sandbags, barriers, ruins
-  pipeRun('z', -14, 6, -13); pipeRun('x', -8, 6, 14); pipeRun('x', 4, 13, -15);
+  { const K = SPREAD; pipeRun('z', -14*K, 6*K, -13*K); pipeRun('x', -8*K, 6*K, 14*K); pipeRun('x', 4*K, 13*K, -15*K); }
   tank(-21, -20, 3, 5.5); tank(-22, 21, 2.6, 5); tank(22, 22, 3, 6);
   for (const [x, z, l, a] of [[-6, -14, 4, 'x'], [8, 9, 4, 'z'], [-9, 10, 4, 'x'], [23, -12, 4, 'x'], [-25, -8, 4, 'z'], [6, -22, 5, 'x'], [-4, 24, 5, 'x'], [26, 8, 4, 'z']]) sandbags(x, z, l, a);
   for (const [x, z, a] of [[0, -9, 'x'], [12, 12, 'z'], [-14, -25, 'x'], [20, -24, 'z']]) barrier(x, z, 2.8, a);
@@ -2319,18 +2482,21 @@ BUILD.skyline = () => {
   const A = ARENA;
   for (const [x, z, w, d] of [[0, -A - .5, A*2 + 2, 1], [0, A + .5, A*2 + 2, 1], [-A - .5, 0, 1, A*2], [A + .5, 0, 1, A*2]]) block(x, 0, z, w, 3.2, d, MAT.concreteDark, 'concrete', { noMantle: true });
   // four corner towers (roofs at 5 m) reached by the jump pads or crate stairs
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) grp(sx*13, sz*13, () => {
     block(sx*13, 0, sz*13, 6, 5, 6, MAT.brick, 'concrete');
     block(sx*13, 5, sz*13, 6.4, .25, 6.4, MAT.trim, 'concrete', { noMantle: true });
     crateStack(sx*13 - sx*4.2, sz*9.2, 1.4, 1.4, 1.2); crateStack(sx*13 - sx*4.2, sz*10.6, 1.4, 1.4, 2.4); crateStack(sx*13 - sx*4.2, sz*12, 1.4, 1.4, 3.6);
     mesh(new THREE.BoxGeometry(.2, 1.4, 3.2), sx*sz > 0 ? MAT.redLight : MAT.lampOn, sx*13 + sx*3.05, 3.3, sz*13);   // neon signs
-  }
+  });
   // two-level core: ground cover, an upper deck at 3 m with ramps (stairs of blocks) on two sides
+  grp(0, 0, () => {
   block(0, 3, 0, 8, .3, 8, MAT.grate, 'metal', { noMantle: true });
   for (const [x, z] of [[-3.6, -3.6], [3.6, -3.6], [-3.6, 3.6], [3.6, 3.6]]) block(x, 0, z, .5, 3, .5, MAT.metal, 'metal');
   for (const sx of [-1, 1]) for (let k = 0; k < 5; k++) block(sx*(4.5 + k), 0, sx*2, 1, 3 - k*.6, 1.6, MAT.concrete, 'concrete');   // stepped ramps up to the deck
   block(0, 0, 0, 3, 1.1, 1, MAT.concrete, 'concrete'); block(0, 3.3, 3.6, 4, 1, .3, MAT.trim, 'concrete');
-  for (const [x, z] of [[-9, -2], [9, 2], [-2, -9], [2, 9]]) crateStack(x, z, 2.4, 1.4, 1.2);
+  for (const [x, z] of [[-9, -2], [9, 2]]) crateStack(x, z, 2.4, 1.4, 1.2);   // the first step of each ramp
+  });
+  for (const [x, z] of [[-2, -9], [2, 9]]) crateStack(x, z, 2.4, 1.4, 1.2);
   barrels(-7, 9, 2, 2, 1.2); barrels(7, -9, 2, 2, 1.2);
   for (const p of MAPDEF.pads) jumpPadMesh(p[0], p[1], p[2]);
 };
@@ -2339,6 +2505,7 @@ BUILD.foundry = () => {
   for (const [x, z, w, d] of [[0, -A - .5, A*2 + 2, 1], [0, A + .5, A*2 + 2, 1], [-A - .5, 0, 1, A*2], [A + .5, 0, 1, A*2]]) block(x, 0, z, w, 6, d, MAT.rustWall, 'metal', { noMantle: true });
   // acid vats (hazards): sunken glowing pools with low rims; bridges cross them in the middle
   const acid = new THREE.MeshBasicMaterial({ color: new THREE.Color(.5, 2.4, .3) });
+  grp(0, 0, () => {   // the vats, their bridges and the catwalk ring are one compound in the middle
   for (const [x, z, w, d] of MAPDEF.hazards) {
     const pool = mesh(new THREE.BoxGeometry(w, .05, d), acid, x, .03, z, scene, false); MAPFX.vats.push(pool);
     for (const sz of [-1, 1]) block(x, 0, z + sz*(d/2 + .15), w + .6, .4, .3, MAT.metalDark, 'metal');
@@ -2348,8 +2515,9 @@ BUILD.foundry = () => {
   for (const sz of [-1, 1]) block(0, 3.2, sz*7, 26, .2, 1.6, MAT.grate, 'metal', { noMantle: true });
   for (const sx of [-1, 1]) block(sx*13, 3.2, 0, 1.6, .2, 15.6, MAT.grate, 'metal', { noMantle: true });
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { block(sx*13, 0, sz*7, .4, 3.2, .4, MAT.pipe, 'metal'); crateStack(sx*15.2, sz*9.5, 1.4, 1.4, 1.2); crateStack(sx*15.2, sz*8.1, 1.4, 1.4, 2.4); }
+  });
   // furnaces and cover on the outer floor
-  for (const [x, z] of [[-17, -16], [17, 16]]) { block(x, 0, z, 4, 4.5, 3, MAT.rust, 'metal'); mesh(new THREE.BoxGeometry(2.2, 1.2, .1), MAT.lampOn, x, 1.4, z + (z < 0 ? 1.55 : -1.55)); }
+  for (const [x, z] of [[-17, -16], [17, 16]]) grp(x, z, () => { block(x, 0, z, 4, 4.5, 3, MAT.rust, 'metal'); mesh(new THREE.BoxGeometry(2.2, 1.2, .1), MAT.lampOn, x, 1.4, z + (z < 0 ? 1.55 : -1.55)); });
   for (const [x, z] of [[0, -14], [0, 14], [-12, -15], [12, 15], [-18, 6], [18, -6]]) crateStack(x, z, 2.4, 1.4, 1.2);
   barrels(-10, 16, 2, 2, 1.2); barrels(10, -16, 2, 2, 1.2);
   for (const p of MAPDEF.pads) jumpPadMesh(p[0], p[1], p[2]);
@@ -2377,8 +2545,10 @@ BUILD.dockyard = () => {
   // invisible border; stacked containers line three sides, the quay opens to the sea on the north
   for (const [x, z, w, d] of [[0, -A - .5, A*2 + 2, 1], [0, A + .5, A*2 + 2, 1], [-A - .5, 0, 1, A*2], [A + .5, 0, 1, A*2]]) solid(x, z, w, d, 7, 'metal', true, 0, { noMantle: true });
   let ci = 0;
+  grp(0, 0, () => {   // the stacks along the edge follow the edge
   for (let x = -A + 3; x < A; x += 6.2) { container(x, A + 2.4, 6, 2.4, 2.6, ci++, 0, { noMantle: true }); container(x, A + 2.4, 6, 2.4, 2.6, ci++, 2.6, { noMantle: true }); }
   for (let z = -A + 3; z < A; z += 6.2) for (const sx of [-1, 1]) { container(sx*(A + 2.4), z, 2.4, 6, 2.6, ci++, 0, { noMantle: true }); if ((z + 30) % 12 < 6) container(sx*(A + 2.4), z, 2.4, 6, 2.6, ci++, 2.6, { noMantle: true }); }
+  });
   { const q = mesh(new THREE.BoxGeometry(A*2 + 12, 1.6, 2), MAT.concreteDark, 0, -.8, -A - 1.6, scene, true); }
   for (let x = -A + 2; x < A; x += 5) { mesh(new THREE.CylinderGeometry(.22, .28, .6, 12), MAT.metalDark, x, .3, -A - .3); }
   // container maze
@@ -2389,7 +2559,7 @@ BUILD.dockyard = () => {
   C2(-16, 11, 'x', 0, true); C2(-6, 11, 'x', 2); C2(6, 11, 'x', 3); C2(16, 11, 'x', 1);
   C2(-10, 19, 'x', 1); C2(2, 19, 'x', 3, true); C2(13, 19, 'x', 0);
   // crates as steps up onto container roofs
-  for (const [x, z] of [[-6, -14.1], [9, -5.1], [-4, 5.9], [-6, 12.9], [13, 17.1], [-18, -5.1], [15, 5.9]]) crateStack(x, z, 1.4, 1.4, 1.2);
+  for (const [x, z, cx, cz] of [[-6, -14.1, -6, -16], [9, -5.1, 9, -7], [-4, 5.9, -4, 2], [-6, 12.9, -6, 11], [13, 17.1, 13, 19], [-18, -5.1, -18, -7], [15, 5.9, 15, 2]]) grp(cx, cz, () => crateStack(x, z, 1.4, 1.4, 1.2));   // (each stays against its container)
   for (const [x, z] of [[-2, -2], [10, 6], [-20, 15], [20, -12], [-11, -12], [0, 15]]) crateStack(x, z, 2.4, 1.4, 1.2);
   barrels(-21, -2, 2, 2, 1.2); barrels(21, 6, 2, 2, 1.2); barrels(8, -21, 2, 2, 1.2);
   // two-story dock office
@@ -2430,11 +2600,11 @@ BUILD.dockyard = () => {
   }
   groundCollider = { surface: g === 'concrete' ? 'concrete' : 'dirt' };
   if (MAP_ID === 'yard') {
-    const pad = mesh(new THREE.PlaneGeometry(14, 14), MAT.tiles, 0, .012, 0, scene, false);
+    const pad = mesh(new THREE.PlaneGeometry(14*SPREAD, 14*SPREAD), MAT.tiles, 0, .012, 0, scene, false);
     pad.rotation.x = -Math.PI/2; MAT.tiles.polygonOffset = true; MAT.tiles.polygonOffsetFactor = -1;
     const pts = [];
-    for (let i = 0; i < 70; i++) { const t = rand(7, 31), side = i % 4, off = rand(-1.4, 1.4); pts.push(side === 0 ? [off, t] : side === 1 ? [off, -t] : side === 2 ? [t, off] : [-t, off]); }
-    for (let i = 0; i < 25; i++) pts.push([rand(-30, 30), rand(-30, 30)]);
+    for (let i = 0; i < 70; i++) { const t = rand(7, 31)*SPREAD, side = i % 4, off = rand(-1.4, 1.4)*SPREAD; pts.push(side === 0 ? [off, t] : side === 1 ? [off, -t] : side === 2 ? [t, off] : [-t, off]); }
+    for (let i = 0; i < 25; i++) pts.push([rand(-30, 30)*SPREAD, rand(-30, 30)*SPREAD]);
     const dm = new THREE.MeshStandardMaterial({ map: T(C.dirt), color: lin(0xb0a696), transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 });
     if (window.BOOM_TEX && BOOM_TEX.gravel_road) {
       // packed-earth scan, tiled twice across a patch; the coverage mask is read from the patch's own 0..1 UVs
@@ -2457,6 +2627,7 @@ BUILD.dockyard = () => {
 }
 bootMark('materials');
 BUILD[MAP_ID]();
+if (SPREAD !== 1) rebinBoxes();
 
 // Floor ambient occlusion: soft dark halos around everything that touches the ground.
 {
@@ -4619,16 +4790,16 @@ function explode(p, owner, how = 'Frag', o = {}) {
 // Characters
 // =====================================================================
 let SOLDIER = null, SOLDIER_CLIPS = [], SOLDIER_SCALE = 1, SOLDIER_FLIP = 0;
-// The operator bodies are two CC0 Grab3D models (see CREDITS.md), slimmed toward a Hyper3D lean silhouette with
-// most plate-carrier / pouch / pad bulk collapsed and retextured to a soft olive uniform. RANGER = male (warden),
-// VIPER = female (axiom). Ids stay 'vanguard' / 'axiom'. Each has full + light files for Low / Mobile.
-// At load the bones get the names the rest of the game uses, the walk / run clips lose their root motion, and an
-// idle (breathing, weight shift) is made from the rest pose. Crouch, lean, aim and death are layered on top live.
+// Both operators share one body: a CC0 infantry soldier (Grab3D) skinned to the CC0 Quaternius "Universal Animation
+// Library" skeleton, baked into operators/soldier-hi.glb (full detail) and soldier-lo.glb (lighter, for distance and
+// Low / Medium) with that library's idle, walk, jog and sprint loops. RANGER wears the issue camo, VIPER the same kit
+// in black. Ids stay 'vanguard' / 'axiom'. At load the bones get the names the rest of the game uses and the loops
+// lose any root motion. Crouch, lean, aim, the arms on the gun and death are layered on top live.
 const CC0_BONES = { Spine02: 'Spine', Spine01: 'Spine1', Spine: 'Spine2', neck: 'Neck', head_end: 'HeadTop_End' };
 const OP_LIGHT = TEXQ === 'low' || TEXQ === 'medium';   // operator textures: 1024 px on Low/Medium, 2048 px on High/Ultra
 // Character LOD: soldiers past CHAR_LOD_D draw the operator's light mesh (same skeleton, bind pose and UVs, about half
 // the triangles) with the full-quality material. hi geometry -> lo geometry, filled in the background after load.
-const CHAR_LOD = new Map(), CHAR_LOD_D = 28;
+const CHAR_LOD = new Map(), CHAR_LOD_D = 10;   // the full-detail body only up close (and in the lobby); past that the lighter one looks the same
 function charLodLoad(file, hiScene) {
   if (OP_LIGHT) return;
   new THREE.GLTFLoader().load('operators/' + file + '-lo.glb', g => {
@@ -4671,7 +4842,7 @@ async function loadCC0(file) {
       if (prop === 'position') { const v = tt.values, x0 = v[0], z0 = v[2]; for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; } }   // in place
       tracks.push(tt);
     }
-    const nmC = /idle/i.test(c.name) ? 'Idle' : /run/i.test(c.name) ? 'Run' : /walk/i.test(c.name) ? 'Walk' : c.name;
+    const nmC = /idle/i.test(c.name) ? 'Idle' : /sprint/i.test(c.name) ? 'Sprint' : /run/i.test(c.name) ? 'Run' : /walk/i.test(c.name) ? 'Walk' : c.name;
     if (!clips.some(k => k.name === nmC)) clips.push(new THREE.AnimationClip(nmC, c.duration, tracks));
   }
   if (clips.some(k => k.name === 'Idle')) { const top = get('HeadTop_End') || get('Head'); return { scene: sc, clips, scale: 1.8 / (top.getWorldPosition(V()).y * (top.name.endsWith('Head') ? 1.1 : 1)), flip: la.getWorldPosition(V()).x < 0 ? Math.PI : 0 }; }
@@ -4691,10 +4862,13 @@ async function loadCC0(file) {
   return { scene: sc, clips, scale: 1.8 / (top.getWorldPosition(V()).y * (top.name.endsWith('Head') ? 1.1 : 1)), flip: la.getWorldPosition(V()).x < 0 ? Math.PI : 0 };
 }
 async function loadSoldier() {
-  for (const [id, file] of [['vanguard', 'warden'], ['axiom', 'axiom']]) {
-    try { const m = await loadCC0(file); Object.assign(OPS[id], m); charLodLoad(file, m.scene); if (id === 'vanguard') { SOLDIER = m.scene; SOLDIER_CLIPS = m.clips; SOLDIER_SCALE = m.scale; SOLDIER_FLIP = m.flip; } }
-    catch (e) { console.warn('operator model failed', file, e); }
-  }
+  // one body for both operators: a scanned-style infantry soldier (Grab3D, CC0) on the Quaternius animation rig (CC0),
+  // with its hand-animated idle / walk / jog / sprint loops. RANGER wears the issue camo, VIPER the same kit in black.
+  try {
+    const m = await loadCC0('soldier'); charLodLoad('soldier', m.scene);
+    for (const id of ['vanguard', 'axiom']) Object.assign(OPS[id], m);
+    SOLDIER = m.scene; SOLDIER_CLIPS = m.clips; SOLDIER_SCALE = m.scale; SOLDIER_FLIP = m.flip;
+  } catch (e) { console.warn('operator model failed', e); }
   // your own operators, added with tools/import-operator.js (listed in operators/custom.json)
   let list = []; try { if (boomHas('operators/custom.json')) { const r = await fetch('operators/custom.json', { cache: 'no-cache' }); if (r.ok) list = await r.json(); } } catch (e) {}
   for (const o of Array.isArray(list) ? list : []) {
@@ -4717,8 +4891,8 @@ async function loadSoldier() {
 const OP_KITS = {};
 const OP_KIT_SKINS = [];
 const OP_KIT_DEFAULT = {};
-const OPS = { vanguard: { id: 'vanguard', name: 'RANGER', note: 'Slim assault', scene: null, clips: [], scale: 1, flip: 0, keepSkin: true },
-  axiom: { id: 'axiom', name: 'VIPER', note: 'Slim recon', scene: null, clips: [], scale: 1, flip: 0, keepSkin: true } };
+const OPS = { vanguard: { id: 'vanguard', name: 'RANGER', note: 'Infantry · issue camo', scene: null, clips: [], scale: 1, flip: 0, keepSkin: true, pat: 3 },
+  axiom: { id: 'axiom', name: 'VIPER', note: 'Night raid · black kit', scene: null, clips: [], scale: 1, flip: 0, keepSkin: true, pat: 3, look: { m: 2, c: ['#4a4e55', '#0b0c0e', '#6a6e75'] } } };
 const OP_IDS = ['vanguard', 'axiom'];
 for (const [id, k] of Object.entries(OP_KITS)) { OPS[id] = { id, name: k.name, note: k.note, scene: null, clips: [], scale: 1, flip: 0, keepSkin: false, kit: id }; OP_IDS.push(id); }
 let myOp = store.get('boomOp', 'vanguard'), mySkin = store.get('boomOpSkin', 'standard');
@@ -4793,7 +4967,7 @@ const opOk = id => !!(OPS[id] && OPS[id].scene);
 const hashStr = s => [...String(s)].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
 const randomOp = () => (Math.random() < .72 ? 'vanguard' : OP_IDS[Math.floor(Math.random() * OP_IDS.length)]);
 // build (or swap) a soldier's body: model, materials with the skin shader, animations, arm IK and bones
-const SLIM = [.80, .78];   // [width, depth] — lean athletic (Hyper3D slim target); soft kit, no bulky vest add-ons
+const SLIM = [1, 1];   // [width, depth] of the body against its own proportions
 // skinned bodies are culled against their bind-pose sphere (three doesn't skin bounds), so it is padded to cover
 // crouch, lean, aimed arms and death poses; off-screen bots then skip both the colour and the shadow pass
 function skinCull(o) {
@@ -4860,7 +5034,7 @@ function setOperator(b, opId, skinId) {
     model.scale.set(op.scale*SLIM[0], op.scale, op.scale*SLIM[1]); model.rotation.y = op.flip;
     // pattern scale: the body's height in its own units is ~1.8 m
     let tall = 0; model.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); tall = Math.max(tall, o.geometry.boundingBox.max.y - o.geometry.boundingBox.min.y); } });
-    b.opScaleBase = tall > 0 ? 1.8 / tall : op.scale;
+    b.opScaleBase = (tall > 0 ? 1.8 / tall : op.scale) * (op.pat || 1);   // (pat: how fine the camo pattern prints on this body)
     b.bodyMats = []; b.visorMats = [];
     model.traverse(o => {
       if (!o.isMesh) return;
@@ -4885,11 +5059,11 @@ function setOperator(b, opId, skinId) {
     if (op.kit) opKitBuild(b, model, op.kit);
     b.group.add(model); b.model = model; b.lodFar = false; b.opId = op.id; b.opScale = op.scale; b.castNow = undefined; b.pose = undefined;
     b.mixer = new THREE.AnimationMixer(model); b.acts = {};
-    for (const n of ['Idle', 'Walk', 'Run']) {
+    for (const n of ['Idle', 'Walk', 'Run', 'Sprint']) {
       const clip = op.clips.find(c => c.name === n);
       if (clip) { const a = b.mixer.clipAction(clip); a.play(); a.setEffectiveWeight(n === 'Idle' ? 1 : 0); a.time = Math.random()*clip.duration; b.acts[n] = a; }
     }
-    b.w = { Idle: 1, Walk: 0, Run: 0 };
+    b.w = { Idle: 1, Walk: 0, Run: 0, Sprint: 0 };
     b.group.updateMatrixWorld(true);
     b.armR = makeArm(model, 'Right'); b.armL = makeArm(model, 'Left');
     b.spine = ['mixamorigSpine', 'mixamorigSpine1', 'mixamorigSpine2'].map(n => model.getObjectByName(n)).filter(Boolean);
@@ -5191,6 +5365,8 @@ function opKitBuild(b, model, id) {
 const fighters = [];
 const player = { name: 'You', isPlayer: true, color: '#ffb14a', pos: V(), hp: 100, alive: true, kills: 0, deaths: 0, speed: 0, lastHurt: -10, lastShot: -10, velY: 0, onGround: true, mantle: null };
 fighters.push(player);
+// guns in soldiers' hands are a touch over life size (they read better at fighting distance), the small ones a little more
+const GUN3P = { smg: 1.2, pistol: 1.25, mpistol: 1.25, magnum: 1.25, sniper: 1.05, dmr: 1.05 };
 function makeBot(name, color) {
   const css = '#' + color.toString(16).padStart(6, '0');   // own color in free-for-all; team colors replace it in team modes
   const b = { name, color: css, pos: V(), hp: 100, alive: true, kills: 0, deaths: 0, speed: 0, lastHurt: -10, lastShot: -10,
@@ -5214,7 +5390,7 @@ function makeBot(name, color) {
   const gun = buildGun(bw.model, false, skin);
   gun.traverse(o => { if (o.isMesh) o.castShadow = false; });
   const gunParts = []; gun.traverse(o => { if (o.isMesh) gunParts.push(o); }); bake(gunParts, gun);
-  gun.rotation.y = Math.PI; gun.scale.setScalar({ smg: 1.45, ar: 1.3, lmg: 1.2, shotgun: 1.3, sniper: 1.15, dmr: 1.2 }[bw.model] || 1.3); gun.position.set(-.12, 1.3, .2); b.pivot.add(gun); b.gun = gun;
+  gun.rotation.y = Math.PI; gun.scale.setScalar(GUN3P[bw.model] || 1.12); gun.position.set(-.13, 1.32, .17); b.pivot.add(gun); b.gun = gun;
   b.glint = gun.userData.glint || null;
   const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: TX.flash, color: new THREE.Color(5, 3.6, 2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   fl.position.copy(gun.userData.muzzle).add(V(0, 0, -.06)); fl.scale.setScalar(.55); fl.visible = false; gun.add(fl); b.flashSprite = fl;
@@ -5747,7 +5923,7 @@ function playerShoot() {
       const pt = end.clone(), back = dir.clone().negate(); onHit = () => impact(pt, back, 'flesh');
     } else if (tw < Infinity) {
       let surf = worldHit.surface;
-      if (MAP_ID === 'yard' && surf === 'dirt' && Math.abs(end.x) < 7 && Math.abs(end.z) < 7) surf = 'concrete';
+      if (MAP_ID === 'yard' && surf === 'dirt' && Math.abs(end.x) < 7*SPREAD && Math.abs(end.z) < 7*SPREAD) surf = 'concrete';
       const pt = end.clone(), n = worldHit.n.clone(), nd = worldHit.noDecal;
       onHit = () => { impact(pt, n, surf); if (!nd) decal(pt, n, surf); };
     }
@@ -6467,7 +6643,7 @@ vec3 opHue(float h){ return clamp(abs(mod(h*6. + vec3(0., 4., 2.), 6.) - 3.) - 1
     vec3 sc = pow(max(diffuseColor.rgb, vec3(0.)), vec3(.4545));
     float Y = dot(sc, vec3(.299, .587, .114)), Cb = .5 - .169*sc.r - .331*sc.g + .5*sc.b, Cr = .5 + .5*sc.r - .419*sc.g - .081*sc.b;
     opCloth = 1. - step(.32, Cb)*step(Cb, .5)*step(.53, Cr)*step(Cr, .67)*step(.16, Y)*opKeep;
-    float L = dot(diffuseColor.rgb, vec3(.299, .587, .114)), rel = L/max(opAvg, .01), sh = clamp(pow(rel, .7), .4, 1.45);   // the texture's folds and seams around its own average: the skin colour stays true
+    float L = dot(diffuseColor.rgb, vec3(.299, .587, .114)), rel = L/max(opAvg, .01), sh = clamp(pow(rel, .6), .45, 1.12);   // the texture's folds and seams around its own average: the skin colour stays true
     vec3 p = vOpP*opScale, c = diffuseColor.rgb; int m = int(opMode + .5);
     if (m == 1) { float a = opF(p*2.2), b = opF(p*3.4 + 5.); c = mix(opC1, opC2, smoothstep(.46, .54, a)); c = mix(c, opC3, smoothstep(.58, .64, b))*sh; }
     else if (m == 2) { c = mix(opC2, opC1, smoothstep(.25, 1.1, rel))*clamp(pow(rel, .55), .5, 1.3); }
@@ -6487,6 +6663,7 @@ vec3 opHue(float h){ return clamp(abs(mod(h*6. + vec3(0., 4., 2.), 6.) - 3.) - 1
       opEmit = vec3(st*(2.2 + 2.*sin(opTime*5. + opH(cell + 3.)*30.))) + opC3*pow(nb, 4.)*1.8; opRgh = .3; }
     else if (m == 13) { float r = length(p.xz)*1.4 + p.y*.6; float ring = sin(r*12. - opTime*3.5); c = vec3(.012)*(.5 + L); opMet = .7; opRgh = .15; opEmit = opC2*smoothstep(.82, 1., ring)*2.8; }
     else if (m == 14) { vec3 h = opHue(fract(p.y*.45 + opTime*.09)); c = mix(opC1, h, .22)*(.6 + L); opMet = .97; opRgh = .14; opEmit = h*(.3 + .2*sin(opTime*2.4)) + opC1*.15; }
+    if (m <= 4) c *= .74;   // dyed cloth sits darker than the swatch
     diffuseColor.rgb = mix(diffuseColor.rgb, c, opCloth);
   }
   if (opAccM > 0.) diffuseColor.rgb = mix(diffuseColor.rgb, opAcc*.6, opAccM);`)
@@ -6518,7 +6695,7 @@ function opMaterial(mat, scale, keepSkin, rim) {
 const _skinCol = new THREE.Color();
 function applyOpSkin(b, skinId) {
   const sk = OP_SKIN[skinId] || OP_SKIN.standard; b.skinId = sk.id;
-  const L = sk.look, cs = L.c || ['#888888', '#444444', '#bbbbbb'];
+  const L = (sk.id === 'standard' && OPS[b.opId] && OPS[b.opId].look) || sk.look, cs = L.c || ['#888888', '#444444', '#bbbbbb'];
   for (const m of b.bodyMats || []) {
     const u = m.userData.opU; if (!u) continue;
     u.opMode.value = L.m; u.opC1.value.copy(lin(cs[0])); u.opC2.value.copy(lin(cs[1])); u.opC3.value.copy(lin(cs[2]));
@@ -7660,7 +7837,9 @@ function updateNadeInd() {
 }
 // legs (idle / walk / run blend), torso twist toward the aim, and arms gripping the gun; used for live
 // soldiers and for the killcam replay
-const ANIM_T = { Idle: 0, Walk: 0, Run: 0 };
+const ANIM_T = { Idle: 0, Walk: 0, Run: 0, Sprint: 0 };
+// ground speed (m/s) each loop covers at normal playback, measured off the feet: playback follows how fast the soldier really moves, so boots don't slide
+const CLIP_SPEED = { Walk: .96, Run: 5.8, Sprint: 9.06 };
 // ---- Pose layer, on top of the idle / walk / run clips (works on any Mixamo-rigged body): a real crouch (hips
 // drop, knees bend, feet stay flat), slides, the torso and gun tilting to aim up or down, a jolt when hit, and a
 // crumple when killed. Rotations are added in each bone's own frame after the clip has posed it. ----
@@ -7715,11 +7894,13 @@ function animateSoldier(b, dt, sp, back, twist, near, lod = 1) {
   if (!b.mixer) return;
   // far away: animate every 2nd / 4th frame (with the time saved up), nobody can tell at that distance
   if (lod > 1) { b.animAcc = (b.animAcc || 0) + dt; b.animN = ((b.animN || 0) + 1) % lod; if (b.animN) return; dt = b.animAcc; b.animAcc = 0; }
-  ANIM_T.Idle = sp < .5 ? 1 : 0; ANIM_T.Walk = sp >= .5 && sp < 3 ? 1 : 0; ANIM_T.Run = sp >= 3 ? 1 : 0;
+  const sprint = !!b.acts.Sprint && sp >= 6.4;
+  ANIM_T.Idle = sp < .4 ? 1 : 0; ANIM_T.Walk = sp >= .4 && sp < 2.5 ? 1 : 0; ANIM_T.Run = sp >= 2.5 && !sprint ? 1 : 0; ANIM_T.Sprint = sprint ? 1 : 0;
   for (const n in b.acts) {
     b.w[n] += (ANIM_T[n] - b.w[n]) * Math.min(1, dt*8); b.acts[n].setEffectiveWeight(b.w[n]);
-    if (n === 'Walk') b.acts[n].timeScale = (back ? -1 : 1) * clamp(sp/1.6, .6, 1.8);
-    if (n === 'Run') b.acts[n].timeScale = (back ? -1 : 1) * clamp(sp/4.6, .7, 1.4);
+    if (n === 'Walk') b.acts[n].timeScale = (back ? -1 : 1) * clamp(sp/CLIP_SPEED.Walk, .7, 2);
+    if (n === 'Run') b.acts[n].timeScale = (back ? -1 : 1) * clamp(sp/CLIP_SPEED.Run, .62, 1.2);
+    if (n === 'Sprint') b.acts[n].timeScale = (back ? -1 : 1) * clamp(sp/CLIP_SPEED.Sprint, .7, 1.15);
   }
   b.mixer.update(dt);
   poseLayer(b, dt, false);
@@ -8146,7 +8327,6 @@ function initPreview() {
     pv = { r, s, cam, holder, gun: null, t: 0, w: 0, h: 0 };
   } catch (e) { pv = null; }
 }
-const PV_ARMS_T = .5;   // walk-cycle phase where both arms hang closest to the sides
 function updatePreview() {
   if (!pv) return;
   if (pv.gun) { pv.holder.remove(pv.gun); pv.gun = null; }
@@ -8157,13 +8337,6 @@ function updatePreview() {
     const o = { group: new THREE.Group(), pivot: new THREE.Group() };
     setOperator(o, myOp, mySkin);
     if (o.acts && o.acts.Idle) for (const n in o.acts) o.acts[n].setEffectiveWeight(n === 'Idle' ? 1 : 0);
-    // the idle clip leaves the arms to the in-game gun IK; here they'd stay in the bind A-pose, so they're held at
-    // a relaxed frame of the walk cycle
-    const walk = o.mixer && (OPS[o.opId] || {}).clips && OPS[o.opId].clips.find(c => c.name === 'Walk');
-    if (walk) {
-      const arms = walk.tracks.filter(t => /(Shoulder|Arm|Hand)\.quaternion$/.test(t.name));
-      if (arms.length) { const a = o.mixer.clipAction(new THREE.AnimationClip('PreviewArms', walk.duration, arms)); a.play(); a.time = walk.duration*PV_ARMS_T; a.timeScale = 0; }
-    }
     o.group.position.y = -.92; pv.holder.add(o.group); pv.op = o;
     pv.cam.position.set(0, .05, 3.3); pv.cam.lookAt(0, 0, 0); pv.cam.fov = 34; pv.cam.updateProjectionMatrix();
     if (cv) cv.style.height = Math.round(cv.clientWidth*.6) + 'px';
@@ -9089,7 +9262,7 @@ function setAvatarGun(b, wid, force) {
     const bw = WEAPONS[wid];
     gun = buildGun(bw.model, false, camo);
     const parts = []; gun.traverse(o => { if (o.isMesh) parts.push(o); }); bake(parts, gun);
-    gun.rotation.y = Math.PI; gun.scale.setScalar({ smg: 1.45, ar: 1.3, lmg: 1.2, shotgun: 1.3, sniper: 1.15, dmr: 1.2 }[bw.model] || 1.3); gun.position.set(-.12, 1.3, .2);
+    gun.rotation.y = Math.PI; gun.scale.setScalar(GUN3P[bw.model] || 1.12); gun.position.set(-.13, 1.32, .17);
     if (gun.userData.glint) gun.userData.glint.visible = false;
     const fl = new THREE.Sprite(b.flashSprite.material); fl.position.copy(gun.userData.muzzle).add(V(0, 0, -.06)); fl.scale.setScalar(.55); fl.visible = false; gun.add(fl); gun.userData.fl = fl;
     cache[wid] = gun;
@@ -9106,25 +9279,8 @@ function exportMapData() {
     boxes: boxes.map(b => [r(b.minX), r(b.minY), r(b.minZ), r(b.maxX), r(b.maxY), r(b.maxZ), (b.pass ? 1 : 0) | (b.noMantle ? 2 : 0) | (b.noDecal ? 4 : 0), Math.max(0, SURF.indexOf(b.surface))]),
     spawns: spawns.map(s => s.map(r)), navNodes: NAV.count } };
 }
-// ---- Installing as an app: Chrome and Edge offer it for a site with a manifest and an offline cache (sw.js).
-// The installed game opens in its own window from the Dock / desktop, and single-player works offline. ----
-let installPrompt = null;
-addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; $('installBtn').style.display = ''; });
-addEventListener('appinstalled', () => { installPrompt = null; $('installBtn').style.display = 'none'; });
-$('installBtn').onclick = async () => {
-  if (!installPrompt) return;
-  installPrompt.prompt();
-  try { await installPrompt.userChoice; } catch (e) {}
-  installPrompt = null; $('installBtn').style.display = 'none';
-};
-if ('serviceWorker' in navigator && netServed() && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
-  // a new build installs a new worker (skipWaiting + clients.claim); when it takes over, reload once onto the new files
-  const hadSW = !!navigator.serviceWorker.controller;
-  let reloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadSW && !reloaded && !running) { reloaded = true; location.reload(); } });
-  const reg = () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update().catch(() => {}); setInterval(() => r.update().catch(() => {}), 10*60*1000); }).catch(e => console.warn('offline cache unavailable', e));
-  if (document.readyState === 'complete') reg(); else addEventListener('load', reg);
-}
+// Boom Arena is a desktop app now: remove the offline cache an older browser version may have installed
+if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
 // after loading a different map for an online match: rejoin it straight away
 function netResume() {
   let r = null; try { r = JSON.parse(sessionStorage.getItem('boomRejoin') || 'null'); } catch (e) {}
@@ -9294,7 +9450,7 @@ async function benchmark() {
   if (targetFps >= 90 && pickHalf >= 0) { frameCap = targetFps / 2; return pickHalf; }
   return PRESETS.length - 1;
 }
-const benchKey = () => `boomBench|v4|${MAP_ID}|${innerWidth}x${innerHeight}@${devicePixelRatio}|${targetFps}`;
+const benchKey = () => `boomBench|v5|${MAP_ID}|${innerWidth}x${innerHeight}@${devicePixelRatio}|${targetFps}`;
 function saveBench(p) { store.set(benchKey(), JSON.stringify({ preset: p, cap: frameCap })); }
 const perf = { t: 0, frames: 0, worst: 0, slow: 0, good: 0, probation: 0, blockUntil: 0, floor: 0 };
 // the next cheaper (dir 1) or richer (dir -1) preset with the same post-processing setting; only when there's
@@ -9457,14 +9613,16 @@ function frame(t, uncapped) {
   updatePost(dt); camoTime.value += dt;
   if (running || started) updateHUD(dt);
   // menus draw at a lower rate (the orbiting menu view at 30, the paused game at 20): no need to heat up a laptop
-  // the lobby covers the whole screen with its own view, so the game behind it doesn't need drawing
-  if (!(window.BoomLobby && BoomLobby.isOpen() && !running) && (running || (pausedTick++ % (started ? 3 : 2)) === 0)) renderFrame(dt);
+  // the lobby stands your squad in the map itself: it sets the view, the game draws it
+  const lobbyUp = !running && window.BoomLobby && BoomLobby.isOpen(), lobbyStage = lobbyUp && BoomLobby.stage && BoomLobby.stage(dt);
+  if (lobbyStage || (!lobbyUp && (running || (pausedTick++ % (started ? 3 : 2)) === 0))) renderFrame(dt);
   renderPreview(dt);
 }
 
 bootMark('script end');
 // refresh-rate detection waits on the screen, so it runs while the soldier model loads
 Promise.all([detectRefresh().then(hz => { targetFps = Math.round(hz); bootMark('refresh detect'); }), loadSoldier(),
+  Promise.race([loadRealProps().then(n => { window.BOOM_REAL_PROPS = n; bootMark('scanned props'); }), new Promise(r => setTimeout(r, 8000))]),
   Promise.race([loadRealGuns(), new Promise(r => setTimeout(r, 8000))]).then(() => { WEAPONS.forEach((w, i) => { if (realGunDef(w.model)) rebuildViewmodel(i); }); bootMark('gun models'); })]).then(async () => {
   bootMark('soldier model');
   registerVanguard();
